@@ -6,14 +6,17 @@
     <!-- Product and plugin compatibility requirements -->
     <!-- https://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
+    <depends>Git4Idea</depends>
 
     <extensions defaultExtensionNs="com.intellij">
+        <openapi.vcs.ui.cloneDialog.VcsCloneDialogExtension implementation="com.github.xeonkryptos.gitlabintegration.gitlab.ui.cloneDialog.GitlabCloneDialogExtension"/>
+
+
         <applicationService serviceImplementation="com.github.xeonkryptos.gitlabintegration.services.MyApplicationService"/>
         <projectService serviceImplementation="com.github.xeonkryptos.gitlabintegration.services.MyProjectService"/>
     </extensions>
 
     <projectListeners>
-        <listener class="com.github.xeonkryptos.gitlabintegration.listeners.MyProjectManagerListener"
-                  topic="com.intellij.openapi.project.ProjectManagerListener"/>
+        <listener class="com.github.xeonkryptos.gitlabintegration.listeners.MyProjectManagerListener" topic="com.intellij.openapi.project.ProjectManagerListener"/>
     </projectListeners>
 </idea-plugin>

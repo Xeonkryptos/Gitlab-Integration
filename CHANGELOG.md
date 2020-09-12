@@ -3,5 +3,9 @@
 # Gitlab-Integration Changelog
 
 ## [Unreleased]
+
 ### Added
-- Initial scaffold created from [IntelliJ Platform Plugin Template](https://github.com/JetBrains/intellij-platform-plugin-template)
+
+- Filter functionality into a tree
+- Added gitlab brand icon into clone dialog
+- Created basic extension point to register UI components into clone dialog to support gitlab
