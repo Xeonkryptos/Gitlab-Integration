@@ -1,6 +1,7 @@
 package com.github.xeonkryptos.gitlabintegration.gitlab.util
 
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.util.IconLoader
 
 /**
  * @author Xeonkryptos
@@ -10,4 +11,6 @@ object GitlabUtil {
 
     @JvmField
     val LOG: Logger = Logger.getInstance("gitlab")
+    @JvmField
+    val GITLAB_ICON = IconLoader.getIcon("/icons/gitlab-icon-rgb.svg")
 }
