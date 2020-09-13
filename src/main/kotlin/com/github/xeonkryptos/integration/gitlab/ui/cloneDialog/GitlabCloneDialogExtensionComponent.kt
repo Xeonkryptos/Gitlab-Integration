@@ -1,7 +1,9 @@
-package com.github.xeonkryptos.gitlabintegration.gitlab.ui.cloneDialog
+package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
 
-import com.github.xeonkryptos.gitlabintegration.gitlab.ui.component.TreeWithSearchComponent
-import com.github.xeonkryptos.gitlabintegration.gitlab.util.GitlabUtil
+import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
+import com.github.xeonkryptos.integration.gitlab.ui.component.TreeWithSearchComponent
+import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
+import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.dvcs.repo.ClonePathProvider
 import com.intellij.dvcs.ui.CloneDvcsValidationUtils
 import com.intellij.dvcs.ui.DvcsBundle
@@ -13,13 +15,15 @@ import com.intellij.openapi.vcs.CheckoutProvider
 import com.intellij.openapi.vcs.ui.cloneDialog.VcsCloneDialogExtensionComponent
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.wm.IdeFocusManager
+import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.components.panels.Wrapper
-import com.intellij.ui.layout.GrowPolicy
 import com.intellij.ui.layout.LCFlags
 import com.intellij.ui.layout.panel
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.containers.ContainerUtil
+import com.intellij.util.ui.JBEmptyBorder
+import com.intellij.util.ui.UIUtil
 import git4idea.checkout.GitCheckoutProvider
 import git4idea.commands.Git
 import git4idea.remote.GitRememberedInputs
@@ -65,10 +69,11 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         searchField = treeWithSearchComponent.searchField
 
         val panel = panel(LCFlags.fill) {
-            row { searchField(growX, gapLeft = 5) }
-            row { tree(grow, push, gapLeft = 5, growPolicy = GrowPolicy.MEDIUM_TEXT) }
-            row { directoryField(growX, gapLeft = 5) }
+            row { searchField(growX) }
+            row { ScrollPaneFactory.createScrollPane(tree)(grow, push) }
+            row { directoryField(growX) }
         }
+        panel.border = JBEmptyBorder(UIUtil.PANEL_REGULAR_INSETS)
         wrapper.setContent(panel)
     }
 
@@ -77,7 +82,9 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         val destinationValidation = CloneDvcsValidationUtils.createDestination("") // TODO
         if (destinationValidation != null) {
             LOG.error("Unable to create destination directory", destinationValidation.message)
-            // TODO: Show error to user via notification
+            GitlabNotifications.showError(project,
+                                          GitlabBundle.message("clone.dialog.clone.failed"),
+                                          GitlabBundle.message("clone.error.unable.to.create.dest.dir"))
             return
         }
 
@@ -88,10 +95,12 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         }
         if (destinationParent == null) {
             LOG.error("Clone Failed. Destination doesn't exist")
-            // TODO: Show error to user via notification
+            GitlabNotifications.showError(project,
+                                          GitlabBundle.message("clone.dialog.clone.failed"),
+                                          GitlabBundle.message("clone.error.unable.to.find.dest"))
             return
         }
-        val directoryName = Paths.get("directoryField.text").fileName.toString()
+        val directoryName = Paths.get(directoryField.text).fileName.toString()
         val parentDirectory = parent.toAbsolutePath().toString()
 
         GitCheckoutProvider.clone(project, Git.getInstance(), checkoutListener, destinationParent, "selectedUrl", directoryName, parentDirectory) // TODO
@@ -106,7 +115,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     override fun getView(): JComponent = wrapper
 
     override fun onComponentSelected() {
-        //        dialogStateListener.onOkActionNameChanged(GithubBundle.message("clone.button")) // TODO: Name of "okay" button -> usually "Clone"
+        dialogStateListener.onOkActionNameChanged(GitlabBundle.message("clone.button"))
         //        updateSelectedUrl() // TODO
 
         val focusManager = IdeFocusManager.getInstance(project)

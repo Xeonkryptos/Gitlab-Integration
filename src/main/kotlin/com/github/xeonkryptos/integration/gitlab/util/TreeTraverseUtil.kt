@@ -1,4 +1,4 @@
-package com.github.xeonkryptos.gitlabintegration.gitlab.util
+package com.github.xeonkryptos.integration.gitlab.util
 
 import java.util.function.Consumer
 import javax.swing.tree.TreeModel

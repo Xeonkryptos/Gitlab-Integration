@@ -1,6 +1,6 @@
-package com.github.xeonkryptos.gitlabintegration.gitlab.ui.cloneDialog
+package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
 
-import com.github.xeonkryptos.gitlabintegration.gitlab.util.GitlabUtil
+import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vcs.ui.cloneDialog.VcsCloneDialogExtension
 import com.intellij.openapi.vcs.ui.cloneDialog.VcsCloneDialogExtensionComponent

@@ -1,6 +1,6 @@
-package com.github.xeonkryptos.gitlabintegration.gitlab.ui.component
+package com.github.xeonkryptos.integration.gitlab.ui.component
 
-import com.github.xeonkryptos.gitlabintegration.gitlab.util.TreeTraverseUtil
+import com.github.xeonkryptos.integration.gitlab.util.TreeTraverseUtil
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.speedSearch.SpeedSearch
@@ -29,7 +29,6 @@ class TreeWithSearchComponent(originModel: TreeModel) {
     val tree: SimpleTree = SimpleTree(filteringListModel).apply {
         isRootVisible = false
     }
-
     val searchField: SearchTextField = SearchTextField(false)
 
     init {

@@ -1,4 +1,4 @@
-package com.github.xeonkryptos.gitlabintegration.gitlab.util
+package com.github.xeonkryptos.integration.gitlab.util
 
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.IconLoader

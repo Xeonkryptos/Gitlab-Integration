@@ -1,6 +1,6 @@
-package com.github.xeonkryptos.gitlabintegration.gitlab.ui.component
+package com.github.xeonkryptos.integration.gitlab.ui.component
 
-import com.github.xeonkryptos.gitlabintegration.gitlab.util.TreeTraverseUtil
+import com.github.xeonkryptos.integration.gitlab.util.TreeTraverseUtil
 import com.intellij.ui.tree.TreePathUtil
 import java.util.function.Function
 import java.util.function.Predicate
@@ -49,7 +49,7 @@ class NameFilteringTreeModel<T>(private val originModel: TreeModel, private val 
                 removeNode(treeNode, root as DefaultMutableTreeNode)
             }
         })
-        nodeStructureChanged(root)
+        nodeStructureChanged(root) // TODO: Some tree state restore mechanism required after this? Something like in TreeWithSearchComponent just moved to here to be globally used?
     }
 
     private fun filterLeafNodesStartingAt(leafNodeOrigin: TreeNode) {
