@@ -68,13 +68,14 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         tree = treeWithSearchComponent.tree
         searchField = treeWithSearchComponent.searchField
 
-        val panel = panel(LCFlags.fill) {
-            row { searchField(growX) }
+        val repositoryPanel = panel(LCFlags.fill) {
+            row { searchField(growX, pushX) }
             row { ScrollPaneFactory.createScrollPane(tree)(grow, push) }
-            row { directoryField(growX) }
+            row(GitlabBundle.message("clone.dialog.directory.field")) { directoryField(growX, pushX) }
         }
-        panel.border = JBEmptyBorder(UIUtil.PANEL_REGULAR_INSETS)
-        wrapper.setContent(panel)
+        repositoryPanel.border = JBEmptyBorder(UIUtil.PANEL_REGULAR_INSETS)
+
+        wrapper.setContent(repositoryPanel)
     }
 
     override fun doClone(checkoutListener: CheckoutProvider.Listener) {
@@ -82,9 +83,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         val destinationValidation = CloneDvcsValidationUtils.createDestination("") // TODO
         if (destinationValidation != null) {
             LOG.error("Unable to create destination directory", destinationValidation.message)
-            GitlabNotifications.showError(project,
-                                          GitlabBundle.message("clone.dialog.clone.failed"),
-                                          GitlabBundle.message("clone.error.unable.to.create.dest.dir"))
+            GitlabNotifications.showError(project, GitlabBundle.message("clone.dialog.clone.failed"), GitlabBundle.message("clone.error.unable.to.create.dest.dir"))
             return
         }
 
@@ -95,9 +94,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         }
         if (destinationParent == null) {
             LOG.error("Clone Failed. Destination doesn't exist")
-            GitlabNotifications.showError(project,
-                                          GitlabBundle.message("clone.dialog.clone.failed"),
-                                          GitlabBundle.message("clone.error.unable.to.find.dest"))
+            GitlabNotifications.showError(project, GitlabBundle.message("clone.dialog.clone.failed"), GitlabBundle.message("clone.error.unable.to.find.dest"))
             return
         }
         val directoryName = Paths.get(directoryField.text).fileName.toString()
