@@ -1,13 +1,17 @@
 package com.github.xeonkryptos.gitlabintegration.gitlab.ui.component
 
+import com.github.xeonkryptos.gitlabintegration.gitlab.util.TreeTraverseUtil
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.speedSearch.SpeedSearch
+import com.intellij.ui.tree.TreePathUtil
 import com.intellij.ui.treeStructure.SimpleTree
 import java.util.function.Predicate
 import javax.swing.event.DocumentEvent
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.TreeModel
+import javax.swing.tree.TreeNode
+import javax.swing.tree.TreePath
 
 /**
  * @author Xeonkryptos
@@ -16,11 +20,10 @@ import javax.swing.tree.TreeModel
 class TreeWithSearchComponent(originModel: TreeModel) {
 
     private val speedSearch: SpeedSearch = SpeedSearch(false)
-    private val filterCondition: Predicate<Collection<String?>> = Predicate { userObjects ->
+    private val filterCondition: Predicate<List<String?>> = Predicate { userObjects ->
         val nodePath = userObjects.filterNotNull().joinToString("/")
         return@Predicate speedSearch.shouldBeShowing(nodePath)
     }
-
     private val filteringListModel: NameFilteringTreeModel<String> = NameFilteringTreeModel(originModel, { node -> (node as DefaultMutableTreeNode).userObject as? String }, filterCondition)
 
     val tree: SimpleTree = SimpleTree(filteringListModel).apply {
@@ -34,21 +37,20 @@ class TreeWithSearchComponent(originModel: TreeModel) {
             override fun textChanged(e: DocumentEvent) = speedSearch.updatePattern(searchField.text)
         })
 
-        // TODO: Selection handling necessary when re-filtering components?
         speedSearch.addChangeListener {
-            //            val prevSelection = tree.selectedNode // save to restore the selection on filter drop
+            val prevSelection = tree.selectionPath // save to restore the selection on filter drop
+            val expandedPaths = ArrayList<TreePath>()
+            TreeTraverseUtil.traverseTree(tree.model.root as TreeNode, tree.model, actionAfterTraversedChild = { treeNode ->
+                val treePath = TreePathUtil.toTreePath(treeNode)
+                if (tree.isExpanded(treePath)) {
+                    expandedPaths.add(treePath)
+                }
+            })
             filteringListModel.refilter()
-            //            if (!filteringListModel.isEmpty()) {
-            //                val fullMatchIndex = if (speedSearch.isHoldingFilter) filteringListModel.closestMatchIndex
-            //                else filteringListModel.getElementIndex(prevSelection)
-            //                if (fullMatchIndex != -1) {
-            //                    tree.selectedIndex = fullMatchIndex
-            //                }
-            //
-            //                if (filteringListModel.size <= tree.selectedIndex || !filteringListModel.contains(tree.selectedValue)) {
-            //                    tree.selectedIndex = 0
-            //                }
-            //            }
+            if (filteringListModel.isNotEmpty()) {
+                tree.selectionModel.addSelectionPath(prevSelection)
+                expandedPaths.forEach(tree::expandPath)
+            }
         }
     }
 }

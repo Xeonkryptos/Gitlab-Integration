@@ -1,7 +1,7 @@
 package com.github.xeonkryptos.gitlabintegration.gitlab.ui.component
 
+import com.github.xeonkryptos.gitlabintegration.gitlab.util.TreeTraverseUtil
 import com.intellij.ui.tree.TreePathUtil
-import java.util.function.Consumer
 import java.util.function.Function
 import java.util.function.Predicate
 import javax.swing.event.TreeModelEvent
@@ -42,7 +42,7 @@ class NameFilteringTreeModel<T>(private val originModel: TreeModel, private val 
     }
 
     fun refilter() {
-        traverseTree(originModel.root as TreeNode, { filterLeafNodesStartingAt(it) }, { treeNode ->
+        TreeTraverseUtil.traverseTree(originModel.root as TreeNode, originModel, { filterLeafNodesStartingAt(it) }, { treeNode ->
             val treePath = TreePathUtil.pathToTreeNode(treeNode)
             val convertedNodeElements = treePath.path.map { node -> treeNodeContentExtractor.apply(node) }
             if (treeNode.isLeaf.and(filterCondition.test(convertedNodeElements).not())) {
@@ -50,19 +50,6 @@ class NameFilteringTreeModel<T>(private val originModel: TreeModel, private val 
             }
         })
         nodeStructureChanged(root)
-    }
-
-    private fun traverseTree(parent: TreeNode, actionOnLeafNode: Consumer<TreeNode>, actionAfterTraversedChild: Consumer<TreeNode>? = null) {
-        if (originModel.isLeaf(parent)) {
-            actionOnLeafNode.accept(parent)
-        } else {
-            val childCount = originModel.getChildCount(parent)
-            for (i in 0 until childCount) {
-                val child = originModel.getChild(parent, i) as TreeNode
-                traverseTree(child, actionOnLeafNode, actionAfterTraversedChild)
-                actionAfterTraversedChild?.accept(child)
-            }
-        }
     }
 
     private fun filterLeafNodesStartingAt(leafNodeOrigin: TreeNode) {
@@ -113,4 +100,8 @@ class NameFilteringTreeModel<T>(private val originModel: TreeModel, private val 
         }
         return null
     }
+
+    fun isNotEmpty() = !isEmpty()
+
+    fun isEmpty() = root.isLeaf
 }
