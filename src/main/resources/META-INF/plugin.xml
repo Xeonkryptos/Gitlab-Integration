@@ -10,5 +10,7 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <openapi.vcs.ui.cloneDialog.VcsCloneDialogExtension implementation="com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.GitlabCloneDialogExtension"/>
+
+        <projectService serviceImplementation="com.github.xeonkryptos.integration.gitlab.service.GitlabDataService"/>
     </extensions>
 </idea-plugin>
