@@ -59,6 +59,10 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
             wrapper.setContent(tokenLoginUI.tokenLoginPanel)
         } else {
             wrapper.setContent(cloneRepositoryUI.repositoryPanel)
+
+            // TODO: Execute load in a separate thread (asynchronous) to avoid UI blocking. Loading indicator when loading?
+            val gitlabProjects = gitlabApiManager.retrieveProjects()
+            cloneRepositoryUI.updateProjectList(gitlabProjects)
         }
     }
 

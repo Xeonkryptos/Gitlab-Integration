@@ -64,7 +64,7 @@ class CloneRepositoryUI(project: Project) {
         searchField = treeWithSearchComponent.searchField
 
         repositoryPanel = panel(LCFlags.fill) {
-            row { searchField(growX, pushX) }
+            row { searchField(growX, pushX) } // TODO: Add logo of account next to the search field and add log out/switch workspace functionality
             row { ScrollPaneFactory.createScrollPane(tree)(grow, push) }
             row(GitlabBundle.message("clone.dialog.directory.field")) { directoryField(growX, pushX) }
         }
@@ -73,7 +73,6 @@ class CloneRepositoryUI(project: Project) {
     fun updateProjectList(projectList: List<GitlabProjectWrapper>) {
         val defaultMutableTreeNodeRoot = treeModel.root as DefaultMutableTreeNode
         defaultMutableTreeNodeRoot.removeAllChildren()
-        treeModel.nodeStructureChanged(defaultMutableTreeNodeRoot)
 
         val parents = HashMap<String, DefaultMutableTreeNode>()
         projectList.forEach { gitlabProject ->
@@ -93,17 +92,18 @@ class CloneRepositoryUI(project: Project) {
         treeModel.reload()
     }
 
-    private fun addNodeIntoTree(gitlabProjectName: String, parents: Map<String, DefaultMutableTreeNode>) {
-        val parentName = gitlabProjectName.substringBeforeLast('/')
-        val defaultMutableTreeNode = DefaultMutableTreeNode(gitlabProjectName)
-
-        if (!parents.containsKey(parentName)) {
-            addNodeIntoTree(gitlabProjectName, parents)
+    private fun addNodeIntoTree(gitlabProjectPath: String, parents: MutableMap<String, DefaultMutableTreeNode>) {
+        val parentName = gitlabProjectPath.substringBeforeLast('/')
+        if (!parents.containsKey(parentName) && parentName.contains('/')) {
+            addNodeIntoTree(parentName, parents)
         }
-        val parentNode = parents[parentName]
-        parentNode!!.add(defaultMutableTreeNode)
-        if (!parentName.contains('/')) {
-            (treeModel.root as DefaultMutableTreeNode).add(defaultMutableTreeNode)
+        if (!parents.containsKey(parentName) && !parentName.contains('/')) {
+            parents[parentName] = DefaultMutableTreeNode(parentName)
+            (treeModel.root as DefaultMutableTreeNode).add(parents[parentName])
+        }
+        if (parents.containsKey(parentName)) {
+            val currentProjectName = gitlabProjectPath.substringAfterLast('/')
+            parents[parentName]?.add(DefaultMutableTreeNode(currentProjectName))
         }
     }
 
