@@ -103,7 +103,9 @@ class CloneRepositoryUI(project: Project) {
         }
         if (parents.containsKey(parentName)) {
             val currentProjectName = gitlabProjectPath.substringAfterLast('/')
-            parents[parentName]?.add(DefaultMutableTreeNode(currentProjectName))
+            val childNode = DefaultMutableTreeNode(currentProjectName)
+            parents[parentName]?.add(childNode)
+            parents[gitlabProjectPath] = childNode
         }
     }
 
