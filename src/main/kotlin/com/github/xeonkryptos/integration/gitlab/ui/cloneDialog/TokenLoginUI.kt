@@ -8,8 +8,6 @@ import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.layout.ComponentPredicate
 import com.intellij.ui.layout.panel
-import com.intellij.ui.layout.toBinding
-import com.intellij.ui.layout.withTextBinding
 
 /**
  * @author Xeonkryptos
@@ -17,10 +15,7 @@ import com.intellij.ui.layout.withTextBinding
  */
 class TokenLoginUI(project: Project, private val onLoginAction: Runnable) {
 
-    private val dataService = GitlabDataService(project)
-
-    private var gitlabHost: String = ""
-    private var gitlabAccessToken: String = ""
+    private val dataService = GitlabDataService.getInstance(project)
 
     private val gitlabHostTxtField: JBTextField = JBTextField()
     private val gitlabAccessTokenTxtField: JBTextField = JBTextField()
@@ -29,12 +24,15 @@ class TokenLoginUI(project: Project, private val onLoginAction: Runnable) {
 
     init {
         tokenLoginPanel = panel(title = "Gitlab Login via Token") {
-            row("Gitlab Host: ") { gitlabHostTxtField().withTextBinding(::gitlabHost.toBinding()).focused() }
-            row("Gitlab Token: ") { gitlabAccessTokenTxtField().withTextBinding(::gitlabAccessToken.toBinding()) }
+            row("Gitlab Host: ") { gitlabHostTxtField().applyIfEnabled().focused() }
+            row("Gitlab Token: ") { gitlabAccessTokenTxtField().applyIfEnabled() }
             row {
-                button("Login") {
+                button("Log in") {
+                    val gitlabHost = gitlabHostTxtField.text
+                    val gitlabAccessToken = gitlabAccessTokenTxtField.text
+
                     // TODO: Make access check before store credentials and call listener
-                    dataService.gitlabData?.gitlabHosts?.add(gitlabHost)
+                    dataService.state?.activeGitlabHost = gitlabHost
                     GitlabCredentials.storeTokenFor(gitlabHost, gitlabAccessToken)
                     onLoginAction.run()
                 }.enableIf(AccessTokenLoginPredicate())
@@ -57,6 +55,6 @@ class TokenLoginUI(project: Project, private val onLoginAction: Runnable) {
             })
         }
 
-        override fun invoke(): Boolean = gitlabHost.isNotBlank() && gitlabAccessToken.isNotBlank()
+        override fun invoke(): Boolean = gitlabHostTxtField.text.isNotBlank() && gitlabAccessTokenTxtField.text.isNotBlank()
     }
 }

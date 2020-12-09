@@ -1,6 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
 
-import com.github.xeonkryptos.integration.gitlab.api.GitlabProjectApi
+import com.github.xeonkryptos.integration.gitlab.api.GitlabApiManager
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.GitlabDataService
 import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
@@ -41,21 +41,21 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         }
     }
 
-    private val gitlabProjectApi: GitlabProjectApi = GitlabProjectApi(project)
+    private val gitlabApiManager: GitlabApiManager = GitlabApiManager(project)
     private val gitlabDataService = GitlabDataService.getInstance(project)
 
     private var clonePath: String? = null
 
     init {
         val tokenLoginUI = TokenLoginUI(project) {
-            val projectList = gitlabProjectApi.retrieveProjectList()
-            cloneRepositoryUI.updateProjectList(projectList)
+            val gitlabProjects = gitlabApiManager.retrieveProjects()
+            cloneRepositoryUI.updateProjectList(gitlabProjects)
 
             wrapper.setContent(cloneRepositoryUI.repositoryPanel)
         }
 
-        val gitlabHosts = gitlabDataService.gitlabData?.gitlabHosts
-        if (gitlabHosts == null && gitlabHosts?.isEmpty() == true) {
+        val gitlabHost = gitlabDataService.state?.activeGitlabHost
+        if (gitlabHost == null) {
             wrapper.setContent(tokenLoginUI.tokenLoginPanel)
         } else {
             wrapper.setContent(cloneRepositoryUI.repositoryPanel)
@@ -63,8 +63,14 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     }
 
     override fun doClone(checkoutListener: CheckoutProvider.Listener) {
+        val gitlabServerUrl = gitlabApiManager.getGitlabServerUrl()
+        val localClonePath = clonePath
+        if (gitlabServerUrl == null || localClonePath == null) {
+            LOG.error("Unable to construct clone destination. Missing host url and/or clone path")
+            return
+        }
         val parent = Paths.get(cloneRepositoryUI.directoryField.text).toAbsolutePath().parent
-        val destinationValidation = CloneDvcsValidationUtils.createDestination("") // TODO
+        val destinationValidation = CloneDvcsValidationUtils.createDestination("$gitlabServerUrl/$localClonePath") // TODO
         if (destinationValidation != null) {
             LOG.error("Unable to create destination directory", destinationValidation.message)
             GitlabNotifications.showError(project, GitlabBundle.message("clone.dialog.clone.failed"), GitlabBundle.message("clone.error.unable.to.create.dest.dir"))

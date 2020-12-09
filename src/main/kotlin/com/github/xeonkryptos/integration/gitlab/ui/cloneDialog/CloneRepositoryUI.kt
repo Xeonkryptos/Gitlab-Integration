@@ -1,6 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
 
-import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProject
+import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProjectWrapper
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.ui.component.TreeWithSearchComponent
 import com.intellij.dvcs.repo.ClonePathProvider
@@ -39,20 +39,13 @@ class CloneRepositoryUI(project: Project) {
         val fcd = FileChooserDescriptorFactory.createSingleFolderDescriptor()
         fcd.isShowFileSystemRoots = true
         fcd.isHideIgnored = false
-        addBrowseFolderListener(DvcsBundle.getString("clone.destination.directory.browser.title"), DvcsBundle.getString("clone.destination.directory.browser.description"), project, fcd)
+        addBrowseFolderListener(DvcsBundle.message("clone.destination.directory.browser.title"), DvcsBundle.message("clone.destination.directory.browser.description"), project, fcd)
     }
 
     val repositoryPanel: DialogPanel
 
     init {
         val treeRoot = DefaultMutableTreeNode()
-
-        // TODO: Dummy test data. Remove later
-        val xeonkryptosNode = DefaultMutableTreeNode("Xeonkryptos")
-        xeonkryptosNode.add(DefaultMutableTreeNode("eclipse-project-creator"))
-        treeRoot.add(xeonkryptosNode)
-        treeRoot.add(DefaultMutableTreeNode("funartic"))
-
         treeModel = DefaultTreeModel(treeRoot)
 
         val treeWithSearchComponent = TreeWithSearchComponent(treeModel)
@@ -77,20 +70,27 @@ class CloneRepositoryUI(project: Project) {
         }
     }
 
-    fun updateProjectList(projectList: List<GitlabProject>) {
+    fun updateProjectList(projectList: List<GitlabProjectWrapper>) {
+        val defaultMutableTreeNodeRoot = treeModel.root as DefaultMutableTreeNode
+        defaultMutableTreeNodeRoot.removeAllChildren()
+        treeModel.nodeStructureChanged(defaultMutableTreeNodeRoot)
+
         val parents = HashMap<String, DefaultMutableTreeNode>()
         projectList.forEach { gitlabProject ->
-            if (!parents.containsKey(gitlabProject.name)) { // TODO: How to handle multi gitlab hosts with same project names? Prefix them with the received host?
-                val projectPathEntriesCount = gitlabProject.name.count { it == '/' }
-                if (projectPathEntriesCount == 1) {
-                    val defaultMutableTreeNode = DefaultMutableTreeNode(gitlabProject.name)
-                    parents[gitlabProject.name] = defaultMutableTreeNode
-                    (treeModel.root as DefaultMutableTreeNode).add(defaultMutableTreeNode)
-                } else if (projectPathEntriesCount > 1) {
-                    addNodeIntoTree(gitlabProject.name, parents)
+            val projectNameWithNamespace = gitlabProject.project.nameWithNamespace.replace(" / ", "/")
+            if (!parents.containsKey(projectNameWithNamespace)) {
+                val projectPathEntriesCount = projectNameWithNamespace.count { it == '/' }
+                if (projectPathEntriesCount == 0) {
+                    val defaultMutableTreeNode = DefaultMutableTreeNode(projectNameWithNamespace)
+                    parents[projectNameWithNamespace] = defaultMutableTreeNode
+                    defaultMutableTreeNodeRoot.add(defaultMutableTreeNode)
+                } else if (projectPathEntriesCount >= 1) {
+                    addNodeIntoTree(projectNameWithNamespace, parents)
                 }
             }
         }
+
+        treeModel.reload()
     }
 
     private fun addNodeIntoTree(gitlabProjectName: String, parents: Map<String, DefaultMutableTreeNode>) {

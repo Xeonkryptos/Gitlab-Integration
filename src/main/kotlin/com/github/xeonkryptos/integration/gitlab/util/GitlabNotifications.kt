@@ -10,6 +10,6 @@ object GitlabNotifications {
     @JvmStatic
     fun showError(project: Project, title: String, message: String) {
         LOG.info("$title; $message")
-        VcsNotifier.getInstance(project).notifyError(title, message)
+        VcsNotifier.getInstance(project).notifyError(null, title, message)
     }
 }

@@ -10,19 +10,30 @@ import com.intellij.openapi.project.Project
  * @since 17.09.2020
  */
 @State(name = "gitlab-data", reloadable = true)
-class GitlabDataService(project: Project?) : PersistentStateComponent<GitlabData> {
+class GitlabDataService(@Suppress("UNUSED_PARAMETER") project: Project?) : PersistentStateComponent<GitlabData> {
 
     companion object {
 
         @JvmStatic
+        private var instance: GitlabDataService? = null
+
+        @JvmStatic
+        @Synchronized
         fun getInstance(project: Project): GitlabDataService {
-            return project.service()
+            if (instance == null) {
+                instance = project.service()
+            }
+            return instance!!
         }
     }
 
-    var gitlabData: GitlabData? = null
+    private var gitlabData: GitlabData? = null
 
     override fun getState(): GitlabData? = gitlabData
+
+    override fun noStateLoaded() {
+        gitlabData = GitlabData()
+    }
 
     override fun loadState(state: GitlabData) {
         gitlabData = state

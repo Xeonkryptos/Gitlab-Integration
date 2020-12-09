@@ -12,5 +12,5 @@ object GitlabUtil {
     @JvmField
     val LOG: Logger = Logger.getInstance("gitlab")
     @JvmField
-    val GITLAB_ICON = IconLoader.getIcon("/icons/gitlab-icon-rgb.svg")
+    val GITLAB_ICON = IconLoader.getIcon("/icons/gitlab-icon-rgb.svg", GitlabUtil::class.java)
 }
