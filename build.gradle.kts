@@ -74,6 +74,11 @@ detekt {
     }
 }
 
+ktlint {
+    outputToConsole.set(true)
+    disabledRules.addAll("indent", "import-ordering", "parameter-list-wrapping")
+}
+
 tasks {
     // Set the compatibility versions to 1.8
     withType<JavaCompile> {
