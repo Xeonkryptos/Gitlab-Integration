@@ -6,6 +6,10 @@ import com.github.xeonkryptos.integration.gitlab.service.GitlabDataService
 import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.dvcs.ui.CloneDvcsValidationUtils
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.openapi.vcs.CheckoutProvider
@@ -63,12 +67,20 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     }
 
     private fun loadDataFromGitlab() {
-        // TODO: Execute load in a separate thread (asynchronous) to avoid UI blocking. Loading indicator when loading?
-        val avatarImage = gitlabApiManager.getAvatarImage()
-        cloneRepositoryUI.updateUserAvatar(avatarImage)
+        val progressManager = ProgressManager.getInstance()
+        // TODO: Generally does for what it's attended for: executing the download in background without blocking the UI but it shows a dialog informing about the download process... Shouldn't be visible
+        //  for the user. Additionally, a monitor thread to abort a running HTTP request against the API might be useful, too.
+        progressManager.run(object : Task.Backgroundable(project, "Loading data from gitlab repository", true) {
+            override fun run(indicator: ProgressIndicator) {
+                indicator.checkCanceled()
+                val avatarImage = gitlabApiManager.getAvatarImage()
+                ApplicationManager.getApplication().invokeLater { cloneRepositoryUI.updateUserAvatar(avatarImage) }
 
-        val gitlabProjects = gitlabApiManager.retrieveProjects()
-        cloneRepositoryUI.updateProjectList(gitlabProjects)
+                indicator.checkCanceled()
+                val gitlabProjects = gitlabApiManager.retrieveProjects()
+                ApplicationManager.getApplication().invokeLater { cloneRepositoryUI.updateProjectList(gitlabProjects) }
+            }
+        })
     }
 
     override fun doClone(checkoutListener: CheckoutProvider.Listener) {
