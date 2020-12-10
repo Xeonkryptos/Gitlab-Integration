@@ -28,7 +28,6 @@ import javax.swing.JComponent
 class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsCloneDialogExtensionComponent() {
 
     private companion object {
-        @JvmStatic
         private val LOG = GitlabUtil.LOG
     }
 
@@ -48,10 +47,9 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
 
     init {
         val tokenLoginUI = TokenLoginUI(project) {
-            val gitlabProjects = gitlabApiManager.retrieveProjects()
-            cloneRepositoryUI.updateProjectList(gitlabProjects)
-
             wrapper.setContent(cloneRepositoryUI.repositoryPanel)
+
+            loadDataFromGitlab()
         }
 
         val gitlabHost = gitlabDataService.state?.activeGitlabHost
@@ -60,10 +58,17 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         } else {
             wrapper.setContent(cloneRepositoryUI.repositoryPanel)
 
-            // TODO: Execute load in a separate thread (asynchronous) to avoid UI blocking. Loading indicator when loading?
-            val gitlabProjects = gitlabApiManager.retrieveProjects()
-            cloneRepositoryUI.updateProjectList(gitlabProjects)
+            loadDataFromGitlab()
         }
+    }
+
+    private fun loadDataFromGitlab() {
+        // TODO: Execute load in a separate thread (asynchronous) to avoid UI blocking. Loading indicator when loading?
+        val avatarImage = gitlabApiManager.getAvatarImage()
+        cloneRepositoryUI.updateUserAvatar(avatarImage)
+
+        val gitlabProjects = gitlabApiManager.retrieveProjects()
+        cloneRepositoryUI.updateProjectList(gitlabProjects)
     }
 
     override fun doClone(checkoutListener: CheckoutProvider.Listener) {

@@ -4,7 +4,10 @@ import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProjectWrapper
 import com.github.xeonkryptos.integration.gitlab.service.GitlabDataService
 import com.github.xeonkryptos.integration.gitlab.storage.GitlabCredentials
 import com.intellij.openapi.project.Project
+import java.awt.image.BufferedImage
+import java.net.URL
 import java.util.stream.Collectors
+import javax.imageio.ImageIO
 import org.gitlab4j.api.GitLabApi
 
 /**
@@ -51,5 +54,11 @@ class GitlabApiManager(project: Project) {
 
     fun getGitlabServerUrl() = gitLabApi?.gitLabServerUrl
 
-    fun getGitlabApi() = gitLabApi
+    fun getAvatarImage(): BufferedImage? {
+        val avatarUrl = gitLabApi?.userApi?.currentUser?.avatarUrl
+        return if (avatarUrl != null) {
+            val convertedUrl = URL(avatarUrl)
+            ImageIO.read(convertedUrl)
+        } else null
+    }
 }

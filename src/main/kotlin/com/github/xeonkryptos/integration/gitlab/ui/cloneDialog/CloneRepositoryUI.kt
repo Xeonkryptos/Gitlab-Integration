@@ -11,13 +11,19 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.SearchTextField
+import com.intellij.ui.layout.GrowPolicy
 import com.intellij.ui.layout.LCFlags
 import com.intellij.ui.layout.panel
+import com.intellij.ui.layout.separatorAndComment
 import com.intellij.ui.tree.TreePathUtil
 import com.intellij.ui.treeStructure.Tree
+import com.intellij.util.ui.ImageUtil
 import git4idea.remote.GitRememberedInputs
+import java.awt.image.BufferedImage
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.function.Consumer
+import javax.swing.ImageIcon
+import javax.swing.JLabel
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreeSelectionModel
@@ -28,12 +34,18 @@ import javax.swing.tree.TreeSelectionModel
  */
 class CloneRepositoryUI(project: Project) {
 
+    private companion object {
+        private val AVATAR_IMAGE_SIZE_WITH_AND_HEIGHT = 24;
+    }
+
     private val clonePathListeners = CopyOnWriteArraySet<Consumer<String?>>()
 
     private val searchField: SearchTextField
     private val tree: Tree
 
     private val treeModel: DefaultTreeModel
+
+    private val avatarLabel = JLabel()
 
     val directoryField = SelectChildTextFieldWithBrowseButton(ClonePathProvider.defaultParentDirectoryPath(project, GitRememberedInputs.getInstance())).apply {
         val fcd = FileChooserDescriptorFactory.createSingleFolderDescriptor()
@@ -64,9 +76,21 @@ class CloneRepositoryUI(project: Project) {
         searchField = treeWithSearchComponent.searchField
 
         repositoryPanel = panel(LCFlags.fill) {
-            row { searchField(growX, pushX) } // TODO: Add logo of account next to the search field and add log out/switch workspace functionality
+            row(separated = true) {
+                cell(isFullWidth = true) {
+                    searchField(growX, pushX)
+                    avatarLabel()
+                }
+            }
             row { ScrollPaneFactory.createScrollPane(tree)(grow, push) }
             row(GitlabBundle.message("clone.dialog.directory.field")) { directoryField(growX, pushX) }
+        }
+    }
+
+    fun updateUserAvatar(avatarImage: BufferedImage?) {
+        if (avatarImage != null) {
+            val scaledImage = ImageUtil.scaleImage(avatarImage, AVATAR_IMAGE_SIZE_WITH_AND_HEIGHT, AVATAR_IMAGE_SIZE_WITH_AND_HEIGHT)
+            avatarLabel.icon = ImageIcon(scaledImage)
         }
     }
 
