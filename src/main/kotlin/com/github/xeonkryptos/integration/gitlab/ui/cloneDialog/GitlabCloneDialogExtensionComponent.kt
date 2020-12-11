@@ -8,10 +8,7 @@ import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.dvcs.ui.CloneDvcsValidationUtils
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.progress.EmptyProgressIndicator
-import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.openapi.vcs.CheckoutProvider
@@ -75,18 +72,13 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     }
 
     private fun loadDataFromGitlab() {
-        // TODO: Add progress monitor thread to watch a cancel request by the user and interrupt running thread to execute cancel in the download request itself
-        ProgressManager.getInstance().runProcessWithProgressAsynchronously(object : Task.Backgroundable(project, "Loading data from gitlab repository", true) {
-            override fun run(indicator: ProgressIndicator) {
-                indicator.checkCanceled()
-                val avatarImage = gitlabApiManager.getAvatarImage()
-                ApplicationManager.getApplication().invokeLater { cloneRepositoryUI.updateUserAvatar(avatarImage) }
+        ProgressManager.getInstance().runProcessWithProgressSynchronously({
+                                                                              val avatarImage = gitlabApiManager.getAvatarImage()
+                                                                              ApplicationManager.getApplication().invokeLater { cloneRepositoryUI.updateUserAvatar(avatarImage) }
 
-                indicator.checkCanceled()
-                val gitlabProjects = gitlabApiManager.retrieveProjects()
-                ApplicationManager.getApplication().invokeLater { cloneRepositoryUI.updateProjectList(gitlabProjects) }
-            }
-        }, EmptyProgressIndicator())
+                                                                              val gitlabProjects = gitlabApiManager.retrieveProjects()
+                                                                              ApplicationManager.getApplication().invokeLater { cloneRepositoryUI.updateProjectList(gitlabProjects) }
+                                                                          }, "Loading data from gitlab", true, project)
     }
 
     override fun doClone(checkoutListener: CheckoutProvider.Listener) {
