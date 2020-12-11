@@ -1,6 +1,7 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
 
 import com.github.xeonkryptos.integration.gitlab.api.GitlabApiManager
+import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProjectWrapper
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.GitlabDataService
 import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
@@ -39,16 +40,22 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     private val wrapper: Wrapper = Wrapper().apply { border = JBEmptyBorder(UIUtil.PANEL_REGULAR_INSETS) }
 
     private val cloneRepositoryUI: CloneRepositoryUI = CloneRepositoryUI(project).apply {
-        addClonePathListener { newClonePath ->
-            clonePath = newClonePath
-            dialogStateListener.onOkActionEnabled(clonePath != null)
+        addClonePathListener { newGitlabProject ->
+            gitlabProject = newGitlabProject
+            updateProjectName(cloneProjectName)
+            dialogStateListener.onOkActionEnabled(gitlabProject != null)
         }
     }
 
     private val gitlabApiManager: GitlabApiManager = GitlabApiManager(project)
     private val gitlabDataService = GitlabDataService.getInstance(project)
 
-    private var clonePath: String? = null
+    private var gitlabProject: GitlabProjectWrapper? = null
+        set(value) {
+            cloneProjectName = value?.viewableProjectPath?.substringAfterLast('/')
+            field = value
+        }
+    private var cloneProjectName: String? = null
 
     init {
         val tokenLoginUI = TokenLoginUI(project) {
@@ -68,8 +75,8 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     }
 
     private fun loadDataFromGitlab() {
-        val progressManager = ProgressManager.getInstance()
-        progressManager.runProcessWithProgressAsynchronously(object : Task.Backgroundable(project, "Loading data from gitlab repository", true) {
+        // TODO: Add progress monitor thread to watch a cancel request by the user and interrupt running thread to execute cancel in the download request itself
+        ProgressManager.getInstance().runProcessWithProgressAsynchronously(object : Task.Backgroundable(project, "Loading data from gitlab repository", true) {
             override fun run(indicator: ProgressIndicator) {
                 indicator.checkCanceled()
                 val avatarImage = gitlabApiManager.getAvatarImage()
@@ -84,10 +91,10 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
 
     override fun doClone(checkoutListener: CheckoutProvider.Listener) {
         val gitlabServerUrl = gitlabApiManager.getGitlabServerUrl()
-        val localClonePath = clonePath
-        if (gitlabServerUrl != null && localClonePath != null) {
+        val localGitlabProject = gitlabProject
+        if (gitlabServerUrl != null && localGitlabProject != null && localGitlabProject.httpProjectUrl != null) {
             val parent = Paths.get(cloneRepositoryUI.directoryField.text).toAbsolutePath().parent
-            val destinationValidation = CloneDvcsValidationUtils.createDestination("$gitlabServerUrl/$localClonePath")
+            val destinationValidation = CloneDvcsValidationUtils.createDestination(cloneRepositoryUI.directoryField.text)
             if (destinationValidation == null) {
                 val lfs = LocalFileSystem.getInstance()
                 var destinationParent = lfs.findFileByIoFile(parent.toFile())
@@ -101,7 +108,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
                     val directoryName = Paths.get(cloneRepositoryUI.directoryField.text).fileName.toString()
                     val parentDirectory = parent.toAbsolutePath().toString()
 
-                    GitCheckoutProvider.clone(project, Git.getInstance(), checkoutListener, destinationParent, "selectedUrl", directoryName, parentDirectory)
+                    GitCheckoutProvider.clone(project, Git.getInstance(), checkoutListener, destinationParent, localGitlabProject.httpProjectUrl, directoryName, parentDirectory)
                 }
             } else {
                 LOG.error("Unable to create destination directory", destinationValidation.message)

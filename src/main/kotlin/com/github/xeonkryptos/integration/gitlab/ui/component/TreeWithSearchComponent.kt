@@ -20,11 +20,12 @@ import javax.swing.tree.TreePath
 class TreeWithSearchComponent(originModel: TreeModel) {
 
     private val speedSearch: SpeedSearch = SpeedSearch(false)
-    private val filterCondition: Predicate<List<String?>> = Predicate { userObjects ->
-        val nodePath = userObjects.filterNotNull().joinToString("/")
+    private val filterCondition: Predicate<List<TreeNodeEntry?>> = Predicate { treeNodeEntries ->
+        val nodePath = treeNodeEntries.asSequence().filterNotNull().map { it.pathName }.joinToString("/")
         return@Predicate speedSearch.shouldBeShowing(nodePath)
     }
-    private val filteringListModel: NameFilteringTreeModel<String> = NameFilteringTreeModel(originModel, { node -> (node as DefaultMutableTreeNode).userObject as? String }, filterCondition)
+    private val filteringListModel: NameFilteringTreeModel<TreeNodeEntry> =
+        NameFilteringTreeModel(originModel, { node -> (node as DefaultMutableTreeNode).userObject as? TreeNodeEntry }, filterCondition)
 
     val tree: SimpleTree = SimpleTree(filteringListModel).apply {
         isRootVisible = false

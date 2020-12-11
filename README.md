@@ -21,4 +21,5 @@ Planned features:
 
 * Switch between tree representation and list representation of your projects
 * Create new gitlab projects from within the IDE
+* Make configurable if checkout should be done via HTTPS or SSH protocol
 <!-- Plugin description end -->

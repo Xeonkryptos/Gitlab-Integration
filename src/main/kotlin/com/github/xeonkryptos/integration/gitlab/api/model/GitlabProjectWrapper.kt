@@ -9,4 +9,8 @@ import org.gitlab4j.api.models.Project
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-data class GitlabProjectWrapper(val project: Project)
+class GitlabProjectWrapper(project: Project) {
+
+    val viewableProjectPath = project.nameWithNamespace.replace(" / ", "/")
+    val httpProjectUrl: String? = project.httpUrlToRepo
+}

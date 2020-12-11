@@ -2,6 +2,7 @@ package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
 
 import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProjectWrapper
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
+import com.github.xeonkryptos.integration.gitlab.ui.component.TreeNodeEntry
 import com.github.xeonkryptos.integration.gitlab.ui.component.TreeWithSearchComponent
 import com.intellij.dvcs.repo.ClonePathProvider
 import com.intellij.dvcs.ui.DvcsBundle
@@ -13,7 +14,6 @@ import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.layout.LCFlags
 import com.intellij.ui.layout.panel
-import com.intellij.ui.tree.TreePathUtil
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.ImageUtil
 import git4idea.remote.GitRememberedInputs
@@ -22,6 +22,7 @@ import java.util.concurrent.CopyOnWriteArraySet
 import java.util.function.Consumer
 import javax.swing.ImageIcon
 import javax.swing.JLabel
+import javax.swing.JSeparator
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreeSelectionModel
@@ -36,7 +37,7 @@ class CloneRepositoryUI(project: Project) {
         private const val AVATAR_IMAGE_SIZE_WITH_AND_HEIGHT = 24
     }
 
-    private val clonePathListeners = CopyOnWriteArraySet<Consumer<String?>>()
+    private val clonePathListeners = CopyOnWriteArraySet<Consumer<GitlabProjectWrapper?>>()
 
     private val searchField: SearchTextField
     private val tree: Tree
@@ -64,19 +65,21 @@ class CloneRepositoryUI(project: Project) {
 
             addTreeSelectionListener {
                 val selectionPath = selectionPath
-                var selectedClonePath: String? = null
+                var selectedGitlabProject: GitlabProjectWrapper? = null
                 if (selectionPath != null && (selectionPath.lastPathComponent as DefaultMutableTreeNode).isLeaf) {
-                    selectedClonePath = TreePathUtil.convertTreePathToStrings(selectionPath).joinToString("/")
+                    selectedGitlabProject = ((selectionPath.lastPathComponent as DefaultMutableTreeNode).userObject as TreeNodeEntry).gitlabProject
                 }
-                clonePathListeners.forEach { it.accept(selectedClonePath) }
+                clonePathListeners.forEach { it.accept(selectedGitlabProject) }
             }
         }
         searchField = treeWithSearchComponent.searchField
 
+        val avatarImageSeparator = JSeparator()
         repositoryPanel = panel(LCFlags.fill) {
-            row(separated = true) {
+            row {
                 cell(isFullWidth = true) {
                     searchField(growX, pushX)
+                    avatarImageSeparator()
                     avatarLabel()
                 }
             }
@@ -98,15 +101,15 @@ class CloneRepositoryUI(project: Project) {
 
         val parents = HashMap<String, DefaultMutableTreeNode>()
         projectList.forEach { gitlabProject ->
-            val projectNameWithNamespace = gitlabProject.project.nameWithNamespace.replace(" / ", "/")
+            val projectNameWithNamespace = gitlabProject.viewableProjectPath
             if (!parents.containsKey(projectNameWithNamespace)) {
                 val projectPathEntriesCount = projectNameWithNamespace.count { it == '/' }
                 if (projectPathEntriesCount == 0) {
-                    val defaultMutableTreeNode = DefaultMutableTreeNode(projectNameWithNamespace)
-                    parents[projectNameWithNamespace] = defaultMutableTreeNode
-                    defaultMutableTreeNodeRoot.add(defaultMutableTreeNode)
+                    val gitlabProjectTreeNode = DefaultMutableTreeNode(TreeNodeEntry(projectNameWithNamespace, gitlabProject))
+                    parents[projectNameWithNamespace] = gitlabProjectTreeNode
+                    defaultMutableTreeNodeRoot.add(gitlabProjectTreeNode)
                 } else if (projectPathEntriesCount >= 1) {
-                    addNodeIntoTree(projectNameWithNamespace, parents)
+                    addNodeIntoTree(projectNameWithNamespace, gitlabProject, parents)
                 }
             }
         }
@@ -114,28 +117,36 @@ class CloneRepositoryUI(project: Project) {
         treeModel.reload()
     }
 
-    private fun addNodeIntoTree(gitlabProjectPath: String, parents: MutableMap<String, DefaultMutableTreeNode>) {
+    private fun addNodeIntoTree(gitlabProjectPath: String, gitlabProject: GitlabProjectWrapper, parents: MutableMap<String, DefaultMutableTreeNode>) {
         val parentName = gitlabProjectPath.substringBeforeLast('/')
         if (!parents.containsKey(parentName) && parentName.contains('/')) {
-            addNodeIntoTree(parentName, parents)
+            addNodeIntoTree(parentName, gitlabProject, parents)
         }
         if (!parents.containsKey(parentName) && !parentName.contains('/')) {
-            parents[parentName] = DefaultMutableTreeNode(parentName)
+            parents[parentName] = DefaultMutableTreeNode(TreeNodeEntry(parentName))
             (treeModel.root as DefaultMutableTreeNode).add(parents[parentName])
         }
         if (parents.containsKey(parentName)) {
             val currentProjectName = gitlabProjectPath.substringAfterLast('/')
-            val childNode = DefaultMutableTreeNode(currentProjectName)
+            val treeNodeEntry = TreeNodeEntry(currentProjectName)
+            val childNode = DefaultMutableTreeNode(treeNodeEntry)
+            if (gitlabProjectPath == gitlabProject.viewableProjectPath) {
+                treeNodeEntry.gitlabProject = gitlabProject
+            }
             parents[parentName]?.add(childNode)
             parents[gitlabProjectPath] = childNode
         }
     }
 
-    fun addClonePathListener(clonePathListener: Consumer<String?>) {
+    fun updateProjectName(projectName: String?) {
+        directoryField.trySetChildPath(projectName ?: "")
+    }
+
+    fun addClonePathListener(clonePathListener: Consumer<GitlabProjectWrapper?>) {
         clonePathListeners.add(clonePathListener)
     }
 
-    fun removeClonePathListener(clonePathListener: Consumer<String?>) {
+    fun removeClonePathListener(clonePathListener: Consumer<GitlabProjectWrapper?>) {
         clonePathListeners.remove(clonePathListener)
     }
 }

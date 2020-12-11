@@ -49,7 +49,7 @@ class NameFilteringTreeModel<T>(private val originModel: TreeModel, private val 
                 removeNode(treeNode, root as DefaultMutableTreeNode)
             }
         })
-        nodeStructureChanged(root) // TODO: Some tree state restore mechanism required after this? Something like in TreeWithSearchComponent just moved to here to be globally used?
+        nodeStructureChanged(root)
     }
 
     private fun filterLeafNodesStartingAt(leafNodeOrigin: TreeNode) {
