@@ -7,6 +7,7 @@ import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.dvcs.ui.CloneDvcsValidationUtils
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.progress.EmptyProgressIndicator
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
@@ -68,9 +69,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
 
     private fun loadDataFromGitlab() {
         val progressManager = ProgressManager.getInstance()
-        // TODO: Generally does for what it's attended for: executing the download in background without blocking the UI but it shows a dialog informing about the download process... Shouldn't be visible
-        //  for the user. Additionally, a monitor thread to abort a running HTTP request against the API might be useful, too.
-        progressManager.run(object : Task.Backgroundable(project, "Loading data from gitlab repository", true) {
+        progressManager.runProcessWithProgressAsynchronously(object : Task.Backgroundable(project, "Loading data from gitlab repository", true) {
             override fun run(indicator: ProgressIndicator) {
                 indicator.checkCanceled()
                 val avatarImage = gitlabApiManager.getAvatarImage()
@@ -80,38 +79,37 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
                 val gitlabProjects = gitlabApiManager.retrieveProjects()
                 ApplicationManager.getApplication().invokeLater { cloneRepositoryUI.updateProjectList(gitlabProjects) }
             }
-        })
+        }, EmptyProgressIndicator())
     }
 
     override fun doClone(checkoutListener: CheckoutProvider.Listener) {
         val gitlabServerUrl = gitlabApiManager.getGitlabServerUrl()
         val localClonePath = clonePath
-        if (gitlabServerUrl == null || localClonePath == null) {
+        if (gitlabServerUrl != null && localClonePath != null) {
+            val parent = Paths.get(cloneRepositoryUI.directoryField.text).toAbsolutePath().parent
+            val destinationValidation = CloneDvcsValidationUtils.createDestination("$gitlabServerUrl/$localClonePath")
+            if (destinationValidation == null) {
+                val lfs = LocalFileSystem.getInstance()
+                var destinationParent = lfs.findFileByIoFile(parent.toFile())
+                if (destinationParent == null) {
+                    destinationParent = lfs.refreshAndFindFileByIoFile(parent.toFile())
+                }
+                if (destinationParent == null) {
+                    LOG.error("Clone Failed. Destination doesn't exist")
+                    GitlabNotifications.showError(project, GitlabBundle.message("clone.dialog.clone.failed"), GitlabBundle.message("clone.error.unable.to.find.dest"))
+                } else {
+                    val directoryName = Paths.get(cloneRepositoryUI.directoryField.text).fileName.toString()
+                    val parentDirectory = parent.toAbsolutePath().toString()
+
+                    GitCheckoutProvider.clone(project, Git.getInstance(), checkoutListener, destinationParent, "selectedUrl", directoryName, parentDirectory)
+                }
+            } else {
+                LOG.error("Unable to create destination directory", destinationValidation.message)
+                GitlabNotifications.showError(project, GitlabBundle.message("clone.dialog.clone.failed"), GitlabBundle.message("clone.error.unable.to.create.dest.dir"))
+            }
+        } else {
             LOG.error("Unable to construct clone destination. Missing host url and/or clone path")
-            return
         }
-        val parent = Paths.get(cloneRepositoryUI.directoryField.text).toAbsolutePath().parent
-        val destinationValidation = CloneDvcsValidationUtils.createDestination("$gitlabServerUrl/$localClonePath") // TODO
-        if (destinationValidation != null) {
-            LOG.error("Unable to create destination directory", destinationValidation.message)
-            GitlabNotifications.showError(project, GitlabBundle.message("clone.dialog.clone.failed"), GitlabBundle.message("clone.error.unable.to.create.dest.dir"))
-            return
-        }
-
-        val lfs = LocalFileSystem.getInstance()
-        var destinationParent = lfs.findFileByIoFile(parent.toFile())
-        if (destinationParent == null) {
-            destinationParent = lfs.refreshAndFindFileByIoFile(parent.toFile())
-        }
-        if (destinationParent == null) {
-            LOG.error("Clone Failed. Destination doesn't exist")
-            GitlabNotifications.showError(project, GitlabBundle.message("clone.dialog.clone.failed"), GitlabBundle.message("clone.error.unable.to.find.dest"))
-            return
-        }
-        val directoryName = Paths.get(cloneRepositoryUI.directoryField.text).fileName.toString()
-        val parentDirectory = parent.toAbsolutePath().toString()
-
-        GitCheckoutProvider.clone(project, Git.getInstance(), checkoutListener, destinationParent, "selectedUrl", directoryName, parentDirectory) // TODO
     }
 
     override fun doValidateAll(): List<ValidationInfo> {

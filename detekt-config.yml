@@ -7,3 +7,5 @@ formatting:
 style:
   MaxLineLength:
     maxLineLength: 200
+  ForbiddenComment:
+    active: false

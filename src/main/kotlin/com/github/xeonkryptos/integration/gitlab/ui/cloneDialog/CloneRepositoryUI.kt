@@ -11,10 +11,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.SearchTextField
-import com.intellij.ui.layout.GrowPolicy
 import com.intellij.ui.layout.LCFlags
 import com.intellij.ui.layout.panel
-import com.intellij.ui.layout.separatorAndComment
 import com.intellij.ui.tree.TreePathUtil
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.ImageUtil
@@ -35,7 +33,7 @@ import javax.swing.tree.TreeSelectionModel
 class CloneRepositoryUI(project: Project) {
 
     private companion object {
-        private val AVATAR_IMAGE_SIZE_WITH_AND_HEIGHT = 24;
+        private const val AVATAR_IMAGE_SIZE_WITH_AND_HEIGHT = 24
     }
 
     private val clonePathListeners = CopyOnWriteArraySet<Consumer<String?>>()
