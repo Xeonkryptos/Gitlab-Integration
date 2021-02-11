@@ -14,12 +14,14 @@
 - [x] Click the <kbd>Watch</kbd> button on the top of the [IntelliJ Platform Plugin Template][template] to be notified about releases containing new features and fixes.
 
 <!-- Plugin description -->
-This plugin is designed to work directly with Gitlab without leaving the IDE itself. You are able to list the available repositories (at the moment, only yours) and clone them as easy as possible
-onto your own computer.
+This plugin is designed to work with Gitlab in the same manner as the Github plugin of Jetbrains itself. At the moment, only cloning from Gitlab is supported. Some upcoming and planned features you
+can see below.
 
 Planned features:
 
 * Switch between tree representation and list representation of your projects
 * Create new gitlab projects from within the IDE
 * Make configurable if checkout should be done via HTTPS or SSH protocol
+* Multiuser support for different gitlab hosts
+* Same as the official Github plugin made by Jetbrains, handle merge requests from the IDE
 <!-- Plugin description end -->
