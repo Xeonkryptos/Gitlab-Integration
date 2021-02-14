@@ -1,5 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.api.model
 
+import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import org.gitlab4j.api.models.Project
 
 /**
@@ -9,7 +10,7 @@ import org.gitlab4j.api.models.Project
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class GitlabProjectWrapper(project: Project) {
+class GitlabProject(project: Project, val gitlabAccount: GitlabAccount) {
 
     val viewableProjectPath = project.nameWithNamespace.replace(" / ", "/")
     val httpProjectUrl: String? = project.httpUrlToRepo

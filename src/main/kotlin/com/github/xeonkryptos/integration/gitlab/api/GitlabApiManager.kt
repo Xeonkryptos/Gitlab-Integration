@@ -1,64 +1,87 @@
 package com.github.xeonkryptos.integration.gitlab.api
 
-import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProjectWrapper
+import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProject
+import com.github.xeonkryptos.integration.gitlab.api.model.GitlabUser
+import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
 import com.github.xeonkryptos.integration.gitlab.service.GitlabDataService
-import com.github.xeonkryptos.integration.gitlab.storage.GitlabCredentials
+import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
+import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.project.Project
-import java.awt.image.BufferedImage
-import java.net.URL
 import java.util.stream.Collectors
-import javax.imageio.ImageIO
 import org.gitlab4j.api.GitLabApi
 
 /**
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class GitlabApiManager(project: Project) {
+class GitlabApiManager(project: Project, private val dataService: GitlabDataService) {
 
-    private val dataService = GitlabDataService.getInstance(project)
-
-    private var gitLabApi: GitLabApi? = null
-
-    init {
-        openGitlabApiAccess()
+    private companion object {
+        private val LOG = GitlabUtil.LOG
     }
 
-    fun retrieveProjects(): List<GitlabProjectWrapper> {
-        val localGitlabApi = openGitlabApiAccess()
-        if (localGitlabApi != null) {
-            return localGitlabApi.projectApi.ownedProjectsStream.map { GitlabProjectWrapper(it) }.collect(Collectors.toList())
+    private val authenticationManager = AuthenticationManager.getInstance(project)
+
+    fun retrieveGitlabUsersFor(gitlabAccounts: Collection<GitlabAccount>): Map<GitlabAccount, GitlabUser> {
+        val users = mutableMapOf<GitlabAccount, GitlabUser>()
+        gitlabAccounts.filter { it.signedIn }.forEach { gitlabAccount ->
+            var gitlabApi: GitLabApi? = null
+            try {
+                gitlabApi = openGitlabApiAccess(gitlabAccount)
+                users[gitlabAccount] = GitlabUser(gitlabApi.userApi.currentUser, gitlabAccount)
+            } catch (e: Exception) {
+                LOG.warn("Failed to retrieve user information for gitlab account $gitlabAccount", e)
+            } finally {
+                gitlabApi?.close()
+            }
         }
-        return emptyList()
+        return users
     }
 
-    private fun openGitlabApiAccess(): GitLabApi? {
-        val gitlabHost = dataService.state?.activeGitlabHost
-        if (gitlabHost != null) {
-            switchToGitlabHost(gitlabHost)
+    fun retrieveGitlabProjectsFor(gitlabAccounts: Collection<GitlabAccount>): Map<GitlabAccount, List<GitlabProject>> {
+        val accountProjects = mutableMapOf<GitlabAccount, List<GitlabProject>>()
+        gitlabAccounts.filter { it.signedIn }.forEach { gitlabAccount ->
+            var gitlabApi: GitLabApi? = null
+            try {
+                gitlabApi = openGitlabApiAccess(gitlabAccount)
+                val gitlabProjectsForAccount = gitlabApi.projectApi.ownedProjectsStream.map { GitlabProject(it, gitlabAccount) }.collect(Collectors.toList())
+                accountProjects[gitlabAccount] = gitlabProjectsForAccount
+            } catch (e: Exception) {
+                LOG.warn("Failed to retrieve project information for gitlab account $gitlabAccount", e)
+            } finally {
+                gitlabApi?.close()
+            }
         }
-        return gitLabApi
+        return accountProjects
     }
 
-    fun switchToGitlabHost(newGitlabHost: String) {
-        gitLabApi?.close()
-
-        val targetGitlabHost = if (newGitlabHost.endsWith("/")) newGitlabHost.substring(0, newGitlabHost.length - 1); else newGitlabHost
-        val gitlabAccessToken = GitlabCredentials.getTokenFor(targetGitlabHost)
-        if (gitlabAccessToken != null) {
-            gitLabApi = GitLabApi(targetGitlabHost, gitlabAccessToken)
-        } else {
-            // TODO: Log message for missing access token but stored gitlab host... Maybe allow setting it in settings?
+    private fun openGitlabApiAccess(gitlabAccount: GitlabAccount? = dataService.state.activeGitlabAccount): GitLabApi {
+        if (gitlabAccount == null) {
+            throw IllegalArgumentException("Cannot access a gitlab instance without account information")
         }
+        val gitlabHost = gitlabAccount.gitlabHost
+        val username = gitlabAccount.username
+        if (gitlabHost == null || username == null) {
+            throw IllegalStateException("Missing gitlab host or username. Unable to authenticate. Found host: $gitlabHost, found username: $username")
+        }
+
+        val targetGitlabHost = if (gitlabHost.endsWith("/")) gitlabHost.substring(0, gitlabHost.length - 1); else gitlabHost
+        val gitlabAccessToken = authenticationManager.getAuthenticationTokenFor(gitlabAccount) ?: throw IllegalArgumentException(
+            "Cannot access gitlab instance for host $targetGitlabHost with user $username. Missing access token to authenticate"
+                                                                                                                                )
+        return GitLabApi(targetGitlabHost, gitlabAccessToken)
     }
 
-    fun getGitlabServerUrl() = gitLabApi?.gitLabServerUrl
-
-    fun getAvatarImage(): BufferedImage? {
-        val avatarUrl = gitLabApi?.userApi?.currentUser?.avatarUrl
-        return if (avatarUrl != null) {
-            val convertedUrl = URL(avatarUrl)
-            ImageIO.read(convertedUrl)
-        } else null
+    fun loadGitlabUser(host: String, accessToken: String): GitlabUser {
+        var gitlabApi: GitLabApi? = null
+        try {
+            gitlabApi = GitLabApi(host, accessToken)
+            val gitlabUser = gitlabApi.userApi.currentUser
+            val gitlabAccount = GitlabAccount(host, gitlabUser.username)
+            gitlabAccount.signedIn = true
+            return GitlabUser(gitlabUser, gitlabAccount)
+        } finally {
+            gitlabApi?.close()
+        }
     }
 }

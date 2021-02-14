@@ -1,8 +1,10 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
 
 import com.github.xeonkryptos.integration.gitlab.api.GitlabApiManager
-import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProjectWrapper
+import com.github.xeonkryptos.integration.gitlab.api.GitlabUserProvider
+import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProject
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
+import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
 import com.github.xeonkryptos.integration.gitlab.service.GitlabDataService
 import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
@@ -19,6 +21,7 @@ import com.intellij.ui.components.panels.Wrapper
 import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.ui.JBEmptyBorder
 import com.intellij.util.ui.UIUtil
+import com.jetbrains.rd.util.firstOrNull
 import git4idea.checkout.GitCheckoutProvider
 import git4idea.commands.Git
 import java.nio.file.Paths
@@ -34,9 +37,28 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         private val LOG = GitlabUtil.LOG
     }
 
-    private val wrapper: Wrapper = Wrapper().apply { border = JBEmptyBorder(UIUtil.PANEL_REGULAR_INSETS) }
+    private val applicationManager = ApplicationManager.getApplication()
+    private val progressManager = ProgressManager.getInstance()
+    private val gitlabDataService = GitlabDataService.getInstance(project)
 
-    private val cloneRepositoryUI: CloneRepositoryUI = CloneRepositoryUI(project).apply {
+    private val gitlabApiManager = GitlabApiManager(project, gitlabDataService)
+    private val authenticationManager = AuthenticationManager.getInstance(project)
+
+    private val wrapper: Wrapper = object : Wrapper() {
+
+        init {
+            border = JBEmptyBorder(UIUtil.PANEL_REGULAR_INSETS)
+        }
+
+        override fun setContent(wrapped: JComponent?) {
+            super.setContent(wrapped)
+
+            revalidate()
+            repaint()
+        }
+    }
+
+    private val cloneRepositoryUI: CloneRepositoryUI = CloneRepositoryUI(project, GitlabUserProvider(gitlabApiManager, gitlabDataService)).apply {
         addClonePathListener { newGitlabProject ->
             gitlabProject = newGitlabProject
             updateProjectName(cloneProjectName)
@@ -44,10 +66,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         }
     }
 
-    private val gitlabApiManager: GitlabApiManager = GitlabApiManager(project)
-    private val gitlabDataService = GitlabDataService.getInstance(project)
-
-    private var gitlabProject: GitlabProjectWrapper? = null
+    private var gitlabProject: GitlabProject? = null
         set(value) {
             cloneProjectName = value?.viewableProjectPath?.substringAfterLast('/')
             field = value
@@ -55,36 +74,60 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     private var cloneProjectName: String? = null
 
     init {
-        val tokenLoginUI = TokenLoginUI(project) {
-            wrapper.setContent(cloneRepositoryUI.repositoryPanel)
+        val tokenLoginUI = TokenLoginUI(project, gitlabApiManager) { wrapper.setContent(cloneRepositoryUI.repositoryPanel) }
 
-            loadDataFromGitlab()
-        }
-
-        val gitlabHost = gitlabDataService.state?.activeGitlabHost
-        if (gitlabHost == null) {
+        val gitlabAccount = gitlabDataService.state.activeGitlabAccount
+        if (gitlabAccount == null || !authenticationManager.hasAuthenticationTokenFor(gitlabAccount)) {
             wrapper.setContent(tokenLoginUI.tokenLoginPanel)
         } else {
             wrapper.setContent(cloneRepositoryUI.repositoryPanel)
-
             loadDataFromGitlab()
+        }
+
+        gitlabDataService.state.activeGitlabAccountObserver.addObserver { _, newValue ->
+            if (newValue != null) {
+                loadDataFromGitlab()
+            } else {
+                wrapper.setContent(tokenLoginUI.tokenLoginPanel)
+            }
+        }
+        gitlabDataService.state.gitlabAccounts.forEach {
+            it.signedInObservable.addObserver { _, newValue ->
+                if (newValue) {
+                    loadDataFromGitlab()
+                } else {
+                    cloneRepositoryUI.removeAccountProject(it)
+                }
+            }
         }
     }
 
     private fun loadDataFromGitlab() {
-        ProgressManager.getInstance().runProcessWithProgressSynchronously({
-                                                                              val avatarImage = gitlabApiManager.getAvatarImage()
-                                                                              ApplicationManager.getApplication().invokeLater { cloneRepositoryUI.updateUserAvatar(avatarImage) }
+        progressManager.runProcessWithProgressSynchronously({
+                                                                val activeGitlabAccount = gitlabDataService.state.activeGitlabAccount
+                                                                val gitlabAccounts = gitlabDataService.state.gitlabAccounts
+                                                                val gitlabUsers = gitlabApiManager.retrieveGitlabUsersFor(gitlabAccounts)
 
-                                                                              val gitlabProjects = gitlabApiManager.retrieveProjects()
-                                                                              ApplicationManager.getApplication().invokeLater { cloneRepositoryUI.updateProjectList(gitlabProjects) }
-                                                                          }, "Loading data from gitlab", true, project)
+                                                                var activeGitlabUser = gitlabUsers[activeGitlabAccount]
+                                                                if (activeGitlabUser == null) {
+                                                                    val nextGitlabUserEntry = gitlabUsers.firstOrNull()
+                                                                    gitlabDataService.state.activeGitlabAccount = nextGitlabUserEntry?.key
+                                                                    activeGitlabUser = nextGitlabUserEntry?.value
+                                                                }
+                                                                applicationManager.invokeLater {
+                                                                    if (activeGitlabAccount != null) {
+                                                                        cloneRepositoryUI.addUserAccount(activeGitlabUser)
+                                                                    }
+                                                                }
+
+                                                                val gitlabProjects = gitlabApiManager.retrieveGitlabProjectsFor(gitlabAccounts)
+                                                                applicationManager.invokeLater { cloneRepositoryUI.updateAccountProjects(gitlabProjects) }
+                                                            }, "Loading data from gitlab", true, project)
     }
 
     override fun doClone(checkoutListener: CheckoutProvider.Listener) {
-        val gitlabServerUrl = gitlabApiManager.getGitlabServerUrl()
         val localGitlabProject = gitlabProject
-        if (gitlabServerUrl != null && localGitlabProject != null && localGitlabProject.httpProjectUrl != null) {
+        if (localGitlabProject?.httpProjectUrl != null) {
             val parent = Paths.get(cloneRepositoryUI.directoryField.text).toAbsolutePath().parent
             val destinationValidation = CloneDvcsValidationUtils.createDestination(cloneRepositoryUI.directoryField.text)
             if (destinationValidation == null) {
