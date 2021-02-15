@@ -11,7 +11,7 @@ import com.intellij.openapi.project.Project
  * @author Xeonkryptos
  * @since 01.02.2021
  */
-class AuthenticationManager private constructor(project: Project) {
+class AuthenticationManager private constructor(@Suppress("UNUSED_PARAMETER") project: Project) {
 
     companion object {
 

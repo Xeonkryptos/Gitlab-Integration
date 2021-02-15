@@ -12,5 +12,9 @@
         <openapi.vcs.ui.cloneDialog.VcsCloneDialogExtension implementation="com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.GitlabCloneDialogExtension"/>
 
         <projectService serviceImplementation="com.github.xeonkryptos.integration.gitlab.service.GitlabDataService"/>
+        <projectService serviceImplementation="com.github.xeonkryptos.integration.gitlab.service.GitlabIntegrationSettingsService"/>
+
+        <projectConfigurable parentId="tools" instance="com.github.xeonkryptos.integration.gitlab.settings.GitlabIntegrationSettingsConfigurable"
+                             id="com.github.xeonkryptos.integration.gitlab.settings.GitlabIntegrationSettingsConfigurable" displayName="Gitlab Settings" nonDefaultProject="false"/>
     </extensions>
 </idea-plugin>

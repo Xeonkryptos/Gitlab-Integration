@@ -4,6 +4,7 @@ import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProject
 import com.github.xeonkryptos.integration.gitlab.api.model.GitlabUser
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
 import com.github.xeonkryptos.integration.gitlab.service.GitlabDataService
+import com.github.xeonkryptos.integration.gitlab.service.GitlabIntegrationSettingsService
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.project.Project
@@ -20,6 +21,7 @@ class GitlabApiManager(project: Project, private val dataService: GitlabDataServ
         private val LOG = GitlabUtil.LOG
     }
 
+    private val gitlabSettings = GitlabIntegrationSettingsService.getInstance(project)
     private val authenticationManager = AuthenticationManager.getInstance(project)
 
     fun retrieveGitlabUsersFor(gitlabAccounts: Collection<GitlabAccount>): Map<GitlabAccount, GitlabUser> {
@@ -69,13 +71,16 @@ class GitlabApiManager(project: Project, private val dataService: GitlabDataServ
         val gitlabAccessToken = authenticationManager.getAuthenticationTokenFor(gitlabAccount) ?: throw IllegalArgumentException(
             "Cannot access gitlab instance for host $targetGitlabHost with user $username. Missing access token to authenticate"
                                                                                                                                 )
-        return GitLabApi(targetGitlabHost, gitlabAccessToken)
+        val gitlabApi = GitLabApi(targetGitlabHost, gitlabAccessToken)
+        gitlabApi.ignoreCertificateErrors = gitlabSettings.state.disableSslVerification
+        return gitlabApi
     }
 
     fun loadGitlabUser(host: String, accessToken: String): GitlabUser {
         var gitlabApi: GitLabApi? = null
         try {
             gitlabApi = GitLabApi(host, accessToken)
+            gitlabApi.ignoreCertificateErrors = gitlabSettings.state.disableSslVerification
             val gitlabUser = gitlabApi.userApi.currentUser
             val gitlabAccount = GitlabAccount(host, gitlabUser.username)
             gitlabAccount.signedIn = true
