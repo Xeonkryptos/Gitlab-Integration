@@ -12,6 +12,7 @@ import com.intellij.ui.components.JBTextField
 import com.intellij.ui.layout.ComponentPredicate
 import com.intellij.ui.layout.Row
 import com.intellij.ui.layout.panel
+import java.awt.Color
 
 /**
  * @author Xeonkryptos
@@ -35,7 +36,10 @@ class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
     val tokenLoginPanel: DialogPanel
 
     init {
-        val errorLabel = JBLabel()
+        val errorLabel = JBLabel().apply {
+            setAllowAutoWrapping(true)
+            foreground = Color.RED
+        }
 
         tokenLoginPanel = panel(title = "Gitlab Login via Token") {
             row("Gitlab Host: ") { gitlabHostTxtField().applyIfEnabled().focused() }
