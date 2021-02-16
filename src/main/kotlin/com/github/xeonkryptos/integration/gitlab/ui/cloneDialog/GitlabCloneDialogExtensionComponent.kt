@@ -75,6 +75,10 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
 
     init {
         val tokenLoginUI = TokenLoginUI(project, gitlabApiManager) { wrapper.setContent(cloneRepositoryUI.repositoryPanel) }
+        val oauthLoginUI = OAuthLoginUI(project, gitlabApiManager) { wrapper.setContent(cloneRepositoryUI.repositoryPanel) }
+
+        tokenLoginUI.onSwitchLoginMethod = { wrapper.setContent(oauthLoginUI.oauthLoginPanel) }
+        oauthLoginUI.onSwitchLoginMethod = { wrapper.setContent(tokenLoginUI.tokenLoginPanel) }
 
         val gitlabAccount = gitlabDataService.state.activeGitlabAccount
         if (gitlabAccount == null || !authenticationManager.hasAuthenticationTokenFor(gitlabAccount)) {

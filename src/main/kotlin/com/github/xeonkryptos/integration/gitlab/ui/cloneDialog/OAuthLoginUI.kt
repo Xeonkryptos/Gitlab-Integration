@@ -18,7 +18,7 @@ import java.awt.Color
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiManager, private val onLoginAction: Runnable) {
+class OAuthLoginUI(project: Project, private val gitlabApiManager: GitlabApiManager, private val onLoginAction: Runnable) {
 
     private companion object {
         private val LOG = GitlabUtil.LOG
@@ -29,11 +29,12 @@ class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
     private val gitlabDataService = GitlabDataService.getInstance(project)
 
     private val gitlabHostTxtField: JBTextField = JBTextField()
-    private val gitlabAccessTokenTxtField: JBTextField = JBTextField()
+    private val gitlabUsernameTxtField: JBTextField = JBTextField()
+    private val gitlabPasswordTxtField: JBTextField = JBTextField()
 
     private var errorRow: Row? = null
 
-    val tokenLoginPanel: DialogPanel
+    val oauthLoginPanel: DialogPanel
 
     var onSwitchLoginMethod: (() -> Unit)? = null
 
@@ -43,30 +44,32 @@ class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
             foreground = Color.RED
         }
 
-        tokenLoginPanel = panel(title = "Gitlab Login via Token") {
+        oauthLoginPanel = panel(title = "Gitlab Login") {
             row("Gitlab Host: ") { gitlabHostTxtField().applyIfEnabled().focused() }
-            row("Gitlab Token: ") { gitlabAccessTokenTxtField().applyIfEnabled() }
+            row("Username: ") { gitlabUsernameTxtField().applyIfEnabled() }
+            row("Password: ") { gitlabPasswordTxtField().applyIfEnabled() }
             row {
                 button("Log in") {
                     val gitlabHost = gitlabHostTxtField.text
-                    val gitlabAccessToken = gitlabAccessTokenTxtField.text
+                    val gitlabUsername = gitlabUsernameTxtField.text
+                    val gitlabPassword = gitlabPasswordTxtField.text
 
                     try {
-                        val gitlabUser = gitlabApiManager.loadGitlabUser(gitlabHost, gitlabAccessToken)
+                        val gitlabUser = gitlabApiManager.loadGitlabUser(gitlabHost, gitlabUsername, gitlabPassword)
 
-                        authenticationManager.storeAuthentication(gitlabUser.gitlabAccount, gitlabAccessToken)
+                        authenticationManager.storeAuthenticationPassword(gitlabUser.gitlabAccount, gitlabPassword)
                         gitlabDataService.state.activeGitlabAccount = gitlabUser.gitlabAccount
 
                         onLoginAction.run()
                     } catch (e: Exception) {
-                        LOG.error("Log in with provided access token failed.", e, "Host: $gitlabHost")
+                        LOG.error("Log in with provided username password combination failed.", e, "Host: $gitlabHost", "Username: $gitlabUsername")
                         errorLabel.text = "Log in failed. Reason: ${e.message}"
                         errorRow?.visible = true
                     }
                 }.enableIf(AccessTokenLoginPredicate())
             }
             row {
-                link("Login via username and password") { onSwitchLoginMethod?.invoke() }
+                link("Login via token") { onSwitchLoginMethod?.invoke() }
             }
             errorRow = row(errorLabel) {
                 visible = false
@@ -82,13 +85,18 @@ class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
                     listener(invoke())
                 }
             })
-            gitlabAccessTokenTxtField.document.addDocumentListener(object : DocumentAdapter() {
+            gitlabUsernameTxtField.document.addDocumentListener(object : DocumentAdapter() {
+                override fun textChanged(e: javax.swing.event.DocumentEvent) {
+                    listener(invoke())
+                }
+            })
+            gitlabPasswordTxtField.document.addDocumentListener(object : DocumentAdapter() {
                 override fun textChanged(e: javax.swing.event.DocumentEvent) {
                     listener(invoke())
                 }
             })
         }
 
-        override fun invoke(): Boolean = gitlabHostTxtField.text.isNotBlank() && gitlabAccessTokenTxtField.text.isNotBlank()
+        override fun invoke(): Boolean = gitlabHostTxtField.text.isNotBlank() && gitlabUsernameTxtField.text.isNotBlank() && gitlabPasswordTxtField.text.isNotBlank()
     }
 }
