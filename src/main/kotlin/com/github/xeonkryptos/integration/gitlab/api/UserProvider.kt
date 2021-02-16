@@ -1,6 +1,7 @@
 package com.github.xeonkryptos.integration.gitlab.api
 
 import com.github.xeonkryptos.integration.gitlab.api.model.GitlabUser
+import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 
 /**
  * @author Xeonkryptos
@@ -8,5 +9,5 @@ import com.github.xeonkryptos.integration.gitlab.api.model.GitlabUser
  */
 interface UserProvider {
 
-    fun getUsers(): List<GitlabUser>
+    fun getUsers(): Map<GitlabAccount, GitlabUser>
 }

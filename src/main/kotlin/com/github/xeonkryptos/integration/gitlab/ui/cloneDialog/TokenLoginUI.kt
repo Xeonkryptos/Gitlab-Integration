@@ -2,7 +2,7 @@ package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
 
 import com.github.xeonkryptos.integration.gitlab.api.GitlabApiManager
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
-import com.github.xeonkryptos.integration.gitlab.service.GitlabDataService
+import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogPanel
@@ -18,7 +18,7 @@ import java.awt.Color
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiManager, private val onLoginAction: Runnable) {
+class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiManager, private val onLoginAction: () -> Unit) {
 
     private companion object {
         private val LOG = GitlabUtil.LOG
@@ -26,7 +26,7 @@ class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
 
     private val authenticationManager = AuthenticationManager.getInstance(project)
 
-    private val gitlabDataService = GitlabDataService.getInstance(project)
+    private val gitlabSettings = GitlabSettingsService.getInstance(project).state
 
     private val gitlabHostTxtField: JBTextField = JBTextField()
     private val gitlabAccessTokenTxtField: JBTextField = JBTextField()
@@ -52,12 +52,13 @@ class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
                     val gitlabAccessToken = gitlabAccessTokenTxtField.text
 
                     try {
-                        val gitlabUser = gitlabApiManager.loadGitlabUser(gitlabHost, gitlabAccessToken)
+                        val gitlabHostSettings = gitlabSettings.getOrCreateGitlabHostSettings(gitlabHost)
+                        val gitlabUser = gitlabApiManager.loadGitlabUser(gitlabHostSettings, gitlabAccessToken)
 
-                        authenticationManager.storeAuthentication(gitlabUser.gitlabAccount, gitlabAccessToken)
-                        gitlabDataService.state.activeGitlabAccount = gitlabUser.gitlabAccount
+                        val gitlabAccount = gitlabHostSettings.createGitlabAccount(gitlabUser.username)
+                        authenticationManager.storeAuthentication(gitlabAccount, gitlabAccessToken)
 
-                        onLoginAction.run()
+                        onLoginAction.invoke()
                     } catch (e: Exception) {
                         LOG.error("Log in with provided access token failed.", e, "Host: $gitlabHost")
                         errorLabel.text = "Log in failed. Reason: ${e.message}"

@@ -2,12 +2,13 @@ package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
 
 import com.github.xeonkryptos.integration.gitlab.api.GitlabApiManager
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
-import com.github.xeonkryptos.integration.gitlab.service.GitlabDataService
+import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBPasswordField
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.layout.ComponentPredicate
 import com.intellij.ui.layout.Row
@@ -18,7 +19,7 @@ import java.awt.Color
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class OAuthLoginUI(project: Project, private val gitlabApiManager: GitlabApiManager, private val onLoginAction: Runnable) {
+class OAuthLoginUI(project: Project, private val gitlabApiManager: GitlabApiManager, private val onLoginAction: () -> Unit) {
 
     private companion object {
         private val LOG = GitlabUtil.LOG
@@ -26,11 +27,11 @@ class OAuthLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
 
     private val authenticationManager = AuthenticationManager.getInstance(project)
 
-    private val gitlabDataService = GitlabDataService.getInstance(project)
+    private val gitlabSettings = GitlabSettingsService.getInstance(project).state
 
     private val gitlabHostTxtField: JBTextField = JBTextField()
     private val gitlabUsernameTxtField: JBTextField = JBTextField()
-    private val gitlabPasswordTxtField: JBTextField = JBTextField()
+    private val gitlabPasswordTxtField: JBPasswordField = JBPasswordField()
 
     private var errorRow: Row? = null
 
@@ -52,15 +53,16 @@ class OAuthLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
                 button("Log in") {
                     val gitlabHost = gitlabHostTxtField.text
                     val gitlabUsername = gitlabUsernameTxtField.text
-                    val gitlabPassword = gitlabPasswordTxtField.text
+                    val gitlabPassword = gitlabPasswordTxtField.password
 
                     try {
-                        val gitlabUser = gitlabApiManager.loadGitlabUser(gitlabHost, gitlabUsername, gitlabPassword)
+                        val gitlabHostSettings = gitlabSettings.getOrCreateGitlabHostSettings(gitlabHost)
+                        val gitlabAccount = gitlabHostSettings.createGitlabAccount(gitlabUsername)
 
-                        authenticationManager.storeAuthenticationPassword(gitlabUser.gitlabAccount, gitlabPassword)
-                        gitlabDataService.state.activeGitlabAccount = gitlabUser.gitlabAccount
+                        authenticationManager.storeAuthenticationPassword(gitlabAccount, gitlabPassword)
+                        gitlabApiManager.loadGitlabUser(gitlabAccount)
 
-                        onLoginAction.run()
+                        onLoginAction.invoke()
                     } catch (e: Exception) {
                         LOG.error("Log in with provided username password combination failed.", e, "Host: $gitlabHost", "Username: $gitlabUsername")
                         errorLabel.text = "Log in failed. Reason: ${e.message}"
@@ -97,6 +99,7 @@ class OAuthLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
             })
         }
 
-        override fun invoke(): Boolean = gitlabHostTxtField.text.isNotBlank() && gitlabUsernameTxtField.text.isNotBlank() && gitlabPasswordTxtField.text.isNotBlank()
+        override fun invoke(): Boolean =
+            gitlabHostTxtField.text.isNotBlank() && gitlabUsernameTxtField.text.isNotBlank() && gitlabPasswordTxtField.password.isNotEmpty()
     }
 }

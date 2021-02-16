@@ -32,16 +32,12 @@ class AuthenticationManager private constructor(@Suppress("UNUSED_PARAMETER") pr
         storeTokenFor(gitlabAccount, gitlabAccessToken)
     }
 
-    fun storeAuthenticationPassword(gitlabAccount: GitlabAccount, password: String) {
-        storeTokenFor(gitlabAccount, password)
+    fun storeAuthenticationPassword(gitlabAccount: GitlabAccount, password: CharArray) {
+        storePasswordFor(gitlabAccount, password)
     }
 
     fun deleteAuthenticationFor(gitlabAccount: GitlabAccount) {
         deleteTokenFor(gitlabAccount)
-    }
-
-    fun deleteAuthenticationPasswordFor(gitlabAccount: GitlabAccount) {
-        deletePasswordFor(gitlabAccount)
     }
 
     fun hasAuthenticationTokenFor(gitlabAccount: GitlabAccount) = getAuthenticationTokenFor(gitlabAccount) != null || getAuthenticationPasswordFor(gitlabAccount) != null
@@ -58,12 +54,12 @@ class AuthenticationManager private constructor(@Suppress("UNUSED_PARAMETER") pr
 
     private fun storeTokenFor(gitlabAccount: GitlabAccount, gitlabAccessToken: String) {
         val credentialAttributes = createTokenCredentialAttributes(gitlabAccount)
-        PasswordSafe.instance.set(credentialAttributes, Credentials(gitlabAccount.gitlabHost, gitlabAccessToken))
+        PasswordSafe.instance.setPassword(credentialAttributes, gitlabAccessToken)
     }
 
-    private fun storePasswordFor(gitlabAccount: GitlabAccount, password: String) {
+    private fun storePasswordFor(gitlabAccount: GitlabAccount, password: CharArray) {
         val credentialAttributes = createPasswordCredentialAttributes(gitlabAccount)
-        PasswordSafe.instance.setPassword(credentialAttributes, password)
+        PasswordSafe.instance.set(credentialAttributes, Credentials(gitlabAccount.username, password))
     }
 
     private fun deleteTokenFor(gitlabAccount: GitlabAccount) {
@@ -71,18 +67,13 @@ class AuthenticationManager private constructor(@Suppress("UNUSED_PARAMETER") pr
         PasswordSafe.instance.set(credentialAttributes, null)
     }
 
-    private fun deletePasswordFor(gitlabAccount: GitlabAccount) {
-        val credentialAttributes = createPasswordCredentialAttributes(gitlabAccount)
-        PasswordSafe.instance.setPassword(credentialAttributes, null)
-    }
-
     private fun createTokenCredentialAttributes(gitlabAccount: GitlabAccount): CredentialAttributes {
-        val gitlabTokenServiceName = generateServiceName("Gitlab Token", "${gitlabAccount.gitlabHost}->${gitlabAccount.username}")
+        val gitlabTokenServiceName = generateServiceName("Gitlab Token", "${gitlabAccount.getGitlabHost()}->${gitlabAccount.username}")
         return CredentialAttributes(gitlabTokenServiceName)
     }
 
     private fun createPasswordCredentialAttributes(gitlabAccount: GitlabAccount): CredentialAttributes {
-        val gitlabTokenServiceName = generateServiceName("Gitlab Password", "${gitlabAccount.gitlabHost}->${gitlabAccount.username}")
+        val gitlabTokenServiceName = generateServiceName("Gitlab Password", "${gitlabAccount.getGitlabHost()}->${gitlabAccount.username}")
         return CredentialAttributes(gitlabTokenServiceName)
     }
 }

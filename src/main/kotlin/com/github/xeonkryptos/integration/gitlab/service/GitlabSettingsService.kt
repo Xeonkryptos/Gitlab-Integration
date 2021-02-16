@@ -1,6 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.service
 
-import com.github.xeonkryptos.integration.gitlab.service.data.GitlabData
+import com.github.xeonkryptos.integration.gitlab.service.data.GitlabSettings
 import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.service
@@ -10,17 +10,17 @@ import com.intellij.openapi.project.Project
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-@State(name = "gitlab-data", reloadable = true)
-class GitlabDataService(private val project: Project) : PersistentStateComponent<GitlabData> {
+@State(name = "gitlab-settings", reloadable = true)
+class GitlabSettingsService(private val project: Project) : PersistentStateComponent<GitlabSettings> {
 
     companion object {
 
         @JvmStatic
-        private var instance: GitlabDataService? = null
+        private var instance: GitlabSettingsService? = null
 
         @JvmStatic
         @Synchronized
-        fun getInstance(project: Project): GitlabDataService {
+        fun getInstance(project: Project): GitlabSettingsService {
             if (instance == null) {
                 instance = project.service()
             }
@@ -28,11 +28,11 @@ class GitlabDataService(private val project: Project) : PersistentStateComponent
         }
     }
 
-    private var gitlabData = GitlabData()
+    private var gitlabData = GitlabSettings()
 
-    override fun getState(): GitlabData = gitlabData
+    override fun getState(): GitlabSettings = gitlabData
 
-    override fun loadState(state: GitlabData) {
+    override fun loadState(state: GitlabSettings) {
         state.onLoadingFinished(project)
         gitlabData = state
     }

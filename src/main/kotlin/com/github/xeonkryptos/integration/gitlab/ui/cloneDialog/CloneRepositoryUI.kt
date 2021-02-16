@@ -5,7 +5,6 @@ import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProject
 import com.github.xeonkryptos.integration.gitlab.api.model.GitlabUser
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
-import com.github.xeonkryptos.integration.gitlab.service.GitlabDataService
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.ui.component.TreeNodeEntry
 import com.github.xeonkryptos.integration.gitlab.ui.component.TreeWithSearchComponent
@@ -51,7 +50,6 @@ import javax.swing.tree.TreeSelectionModel
 class CloneRepositoryUI(private val project: Project, private val userProvider: UserProvider) {
 
     private val authenticationManager = AuthenticationManager.getInstance(project)
-    private val gitlabDataService = GitlabDataService.getInstance(project)
 
     private val clonePathListeners = CopyOnWriteArraySet<Consumer<GitlabProject?>>()
 
@@ -111,33 +109,34 @@ class CloneRepositoryUI(private val project: Project, private val userProvider: 
     private fun showPopupMenu() {
         val menuItems = mutableListOf<AccountMenuItem>()
 
-        for ((index, user) in userProvider.getUsers().withIndex()) {
-            val accountTitle = user.name ?: user.username
-            val serverInfo = user.server.removePrefix("http://").removePrefix("https://")
-            val avatar = ImageIcon(user.avatar ?: ImageLoader.loadFromResource(GitlabUtil.GITLAB_ICON_PATH, javaClass))
+        for ((index, userEntry) in userProvider.getUsers().entries.withIndex()) {
+            val accountTitle = userEntry.value.name ?: userEntry.value.username
+            val serverInfo = userEntry.value.server.removePrefix("http://").removePrefix("https://")
+            val avatar = ImageIcon(userEntry.value.avatar ?: ImageLoader.loadFromResource(GitlabUtil.GITLAB_ICON_PATH, javaClass))
             val accountActions = mutableListOf<AccountMenuItem.Action>()
             val showSeparatorAbove = index != 0
 
-            accountActions += AccountMenuItem.Action(GitlabBundle.message("open.on.gitlab.action"), { BrowserUtil.browse(user.server) }, AllIcons.Ide.External_link_arrow)
-            if (!user.gitlabAccount.signedIn) {
+            accountActions += AccountMenuItem.Action(GitlabBundle.message("open.on.gitlab.action"), { BrowserUtil.browse(userEntry.value.server) }, AllIcons.Ide.External_link_arrow)
+            if (!userEntry.key.signedIn) {
                 accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.log.in"), {
-                    if (!user.gitlabAccount.signedIn) {
-                        if (authenticationManager.hasAuthenticationTokenFor(user.gitlabAccount)) {
-                            user.gitlabAccount.signedIn = true
+                    if (!userEntry.key.signedIn) {
+                        if (authenticationManager.hasAuthenticationTokenFor(userEntry.key)) {
+                            userEntry.key.signedIn = true
                         } else {
                             // TODO: Make it possible to re-enter token. Keep in mind: Another token for another user might be added. Results in another account!
                         }
                     }
                 }, showSeparatorAbove = true)
             }
-            accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.log.out"), { gitlabDataService.state.signOut(user.gitlabAccount) }, showSeparatorAbove = user.gitlabAccount.signedIn)
+            accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.log.out"), { userEntry.key.signedIn = false }, showSeparatorAbove = userEntry.key.signedIn)
             accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.delete"), {
-                gitlabDataService.state.removeGitlabAccount(user.gitlabAccount)
-                authenticationManager.deleteAuthenticationFor(user.gitlabAccount)
+                userEntry.key.delete()
+                authenticationManager.deleteAuthenticationFor(userEntry.key)
             }, showSeparatorAbove = true)
 
             menuItems += AccountMenuItem.Account(accountTitle, serverInfo, avatar, accountActions, showSeparatorAbove)
         }
+        // TODO: Add actions to login into a new account
 
         AccountsMenuListPopup(project, AccountMenuPopupStep(menuItems)).showUnderneathOf(usersPanel)
     }

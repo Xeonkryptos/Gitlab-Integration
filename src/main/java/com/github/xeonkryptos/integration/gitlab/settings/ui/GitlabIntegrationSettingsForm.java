@@ -1,9 +1,12 @@
 package com.github.xeonkryptos.integration.gitlab.settings.ui;
 
-import com.github.xeonkryptos.integration.gitlab.service.GitlabIntegrationSettingsService;
-import com.github.xeonkryptos.integration.gitlab.service.settings.GitlabIntegrationSettings;
+import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService;
+import com.github.xeonkryptos.integration.gitlab.service.data.GitlabHostSettings;
+import com.github.xeonkryptos.integration.gitlab.service.data.GitlabSettings;
 import com.intellij.openapi.project.Project;
-import javax.swing.JCheckBox;
+import com.intellij.ui.ToolbarDecorator;
+import com.intellij.ui.table.JBTable;
+import java.util.Map;
 import javax.swing.JPanel;
 
 /**
@@ -12,37 +15,41 @@ import javax.swing.JPanel;
  */
 public class GitlabIntegrationSettingsForm {
 
-    private final GitlabIntegrationSettings settings;
+    private final GitlabSettings settings;
+
+    private final GitlabHostsTableModel gitlabHostsTableModel;
 
     private JPanel settingsPanel;
-    private JCheckBox disableSSLCertificateValidationCheckBox;
+    private JBTable gitlabHostsTbl;
 
     public GitlabIntegrationSettingsForm(Project project) {
-        settings = GitlabIntegrationSettingsService.getInstance(project).getState();
+        settings = GitlabSettingsService.getInstance(project).getState();
 
-        updateUiWith(settings);
+        gitlabHostsTableModel = new GitlabHostsTableModel(settings);
+        gitlabHostsTbl.setModel(gitlabHostsTableModel);
+        ToolbarDecorator.createDecorator(gitlabHostsTbl);
+
+        reset();
     }
 
     public boolean isModified() {
-        return disableSSLCertificateValidationCheckBox.isSelected() != settings.getDisableSslVerification();
+        Map<String, GitlabHostSettings> gitlabHostSettings = settings.getGitlabHostSettings();
+        for (GitlabHostSettings gitlabHostUiSetting : gitlabHostsTableModel.getGitlabHostSettings()) {
+            String gitlabHost = gitlabHostUiSetting.getGitlabHost();
+            GitlabHostSettings storedGitlabHostSetting = gitlabHostSettings.get(gitlabHost);
+            if (!storedGitlabHostSetting.equals(gitlabHostUiSetting)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void apply() {
-        syncSettingsWithUi();
+        gitlabHostsTableModel.apply();
     }
 
     public void reset() {
-        updateUiWith(settings);
-    }
-
-    private void syncSettingsWithUi() {
-        boolean disableSslCertificateValidation = disableSSLCertificateValidationCheckBox.isSelected();
-        settings.setDisableSslVerification(disableSslCertificateValidation);
-    }
-
-    private void updateUiWith(GitlabIntegrationSettings gitlabIntegrationSettings) {
-        boolean sslVerificationDisabled = gitlabIntegrationSettings.getDisableSslVerification();
-        disableSSLCertificateValidationCheckBox.setSelected(sslVerificationDisabled);
+        gitlabHostsTableModel.reset();
     }
 
     public JPanel getSettingsPanel() {
