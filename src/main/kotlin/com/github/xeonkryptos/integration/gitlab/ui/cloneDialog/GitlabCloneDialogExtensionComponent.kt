@@ -22,6 +22,7 @@ import com.intellij.openapi.vcs.ui.cloneDialog.VcsCloneDialogExtensionComponent
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.ui.components.panels.Wrapper
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.ui.JBEmptyBorder
 import com.intellij.util.ui.UIUtil
@@ -53,11 +54,13 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         }
     }.apply { border = JBEmptyBorder(UIUtil.PANEL_REGULAR_INSETS) }
 
-    private val cloneRepositoryUI: CloneRepositoryUI = CloneRepositoryUI(project, GitlabUserProvider(gitlabApiManager, gitlabSettings)).apply {
-        addClonePathListener { newGitlabProject ->
-            gitlabProject = newGitlabProject
-            controller.updateProjectName(cloneProjectName)
-            dialogStateListener.onOkActionEnabled(gitlabProject != null)
+    private val cloneRepositoryUI: CloneRepositoryUI by lazy {
+        CloneRepositoryUI(project, GitlabUserProvider(gitlabApiManager, gitlabSettings)).apply {
+            addClonePathListener { newGitlabProject ->
+                gitlabProject = newGitlabProject
+                controller.updateProjectName(cloneProjectName)
+                dialogStateListener.onOkActionEnabled(gitlabProject != null)
+            }
         }
     }
 
@@ -71,18 +74,15 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     private val tokenLoginUI = TokenLoginUI(project, gitlabApiManager)
 
     init {
-        Disposer.register(this, cloneRepositoryUI)
         initMessaging()
 
-        val oauthLoginUI = OAuthLoginUI(project, gitlabApiManager)
-        tokenLoginUI.onSwitchLoginMethod = { wrapper.setContent(oauthLoginUI.oauthLoginPanel) }
-        oauthLoginUI.onSwitchLoginMethod = { wrapper.setContent(tokenLoginUI.tokenLoginPanel) }
+        Disposer.register(this, cloneRepositoryUI)
 
-        val hasSignedInAccounts = gitlabSettings.hasGitlabAccountBy { canAuthenticateAgainstGitlab(it) }
+        val hasSignedInAccounts = gitlabSettings.hasGitlabAccountBy { authenticationManager.hasAuthenticationTokenFor(it) }
         if (!hasSignedInAccounts) {
             wrapper.setContent(tokenLoginUI.tokenLoginPanel)
         } else {
-            cloneRepositoryUI.controller.reloadData()
+            cloneRepositoryUI.reloadData()
             wrapper.setContent(cloneRepositoryUI.repositoryPanel)
         }
     }
@@ -105,21 +105,21 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         })
     }
 
+    @RequiresEdt
     private fun switchToLoginScenery() {
-        val hasLoggedInAccount = gitlabSettings.hasGitlabAccountBy { canAuthenticateAgainstGitlab(it) }
+        val hasLoggedInAccount = gitlabSettings.hasGitlabAccountBy { authenticationManager.hasAuthenticationTokenFor(it) }
         if (!hasLoggedInAccount) {
             wrapper.setContent(tokenLoginUI.tokenLoginPanel)
         }
     }
 
+    @RequiresEdt
     private fun switchToRepoScenery() {
-        val hasLoggedInAccount = gitlabSettings.hasGitlabAccountBy { canAuthenticateAgainstGitlab(it) }
+        val hasLoggedInAccount = gitlabSettings.hasGitlabAccountBy { authenticationManager.hasAuthenticationTokenFor(it) }
         if (hasLoggedInAccount) {
             wrapper.setContent(cloneRepositoryUI.repositoryPanel)
         }
     }
-
-    private fun canAuthenticateAgainstGitlab(gitlabAccount: GitlabAccount): Boolean = gitlabAccount.signedIn && authenticationManager.hasAuthenticationTokenFor(gitlabAccount)
 
     override fun doClone(checkoutListener: CheckoutProvider.Listener) {
         val localGitlabProject = gitlabProject

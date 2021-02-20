@@ -1,11 +1,14 @@
 package com.github.xeonkryptos.integration.gitlab.service
 
+import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabLoginChangeNotifier
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.intellij.credentialStore.CredentialAttributes
-import com.intellij.credentialStore.Credentials
 import com.intellij.credentialStore.generateServiceName
 import com.intellij.ide.passwordSafe.PasswordSafe
+import com.intellij.openapi.application.Application
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import com.intellij.util.messages.MessageBus
 
 /**
  * @author Xeonkryptos
@@ -28,38 +31,31 @@ class AuthenticationManager private constructor(@Suppress("UNUSED_PARAMETER") pr
         }
     }
 
+    private val application: Application = ApplicationManager.getApplication()
+    private val messageBus: MessageBus = application.messageBus
+
     fun storeAuthentication(gitlabAccount: GitlabAccount, gitlabAccessToken: String) {
         storeTokenFor(gitlabAccount, gitlabAccessToken)
-    }
 
-    fun storeAuthenticationPassword(gitlabAccount: GitlabAccount, password: CharArray) {
-        storePasswordFor(gitlabAccount, password)
+        messageBus.syncPublisher(GitlabLoginChangeNotifier.LOGIN_STATE_CHANGED_TOPIC).onSignIn(gitlabAccount)
     }
 
     fun deleteAuthenticationFor(gitlabAccount: GitlabAccount) {
         deleteTokenFor(gitlabAccount)
+
+        messageBus.syncPublisher(GitlabLoginChangeNotifier.LOGIN_STATE_CHANGED_TOPIC).onSignOut(gitlabAccount)
     }
 
-    fun hasAuthenticationTokenFor(gitlabAccount: GitlabAccount) = getAuthenticationTokenFor(gitlabAccount) != null || getAuthenticationPasswordFor(gitlabAccount) != null
+    fun hasAuthenticationTokenFor(gitlabAccount: GitlabAccount) = getAuthenticationTokenFor(gitlabAccount) != null
 
     fun getAuthenticationTokenFor(gitlabAccount: GitlabAccount): String? {
         val credentialAttributes: CredentialAttributes = createTokenCredentialAttributes(gitlabAccount)
         return PasswordSafe.instance.getPassword(credentialAttributes)
     }
 
-    fun getAuthenticationPasswordFor(gitlabAccount: GitlabAccount): String? {
-        val credentialAttributes = createPasswordCredentialAttributes(gitlabAccount)
-        return PasswordSafe.instance.getPassword(credentialAttributes)
-    }
-
     private fun storeTokenFor(gitlabAccount: GitlabAccount, gitlabAccessToken: String) {
         val credentialAttributes = createTokenCredentialAttributes(gitlabAccount)
         PasswordSafe.instance.setPassword(credentialAttributes, gitlabAccessToken)
-    }
-
-    private fun storePasswordFor(gitlabAccount: GitlabAccount, password: CharArray) {
-        val credentialAttributes = createPasswordCredentialAttributes(gitlabAccount)
-        PasswordSafe.instance.set(credentialAttributes, Credentials(gitlabAccount.username, password))
     }
 
     private fun deleteTokenFor(gitlabAccount: GitlabAccount) {
@@ -69,11 +65,6 @@ class AuthenticationManager private constructor(@Suppress("UNUSED_PARAMETER") pr
 
     private fun createTokenCredentialAttributes(gitlabAccount: GitlabAccount): CredentialAttributes {
         val gitlabTokenServiceName = generateServiceName("Gitlab Token", "${gitlabAccount.getGitlabHost()}->${gitlabAccount.username}")
-        return CredentialAttributes(gitlabTokenServiceName)
-    }
-
-    private fun createPasswordCredentialAttributes(gitlabAccount: GitlabAccount): CredentialAttributes {
-        val gitlabTokenServiceName = generateServiceName("Gitlab Password", "${gitlabAccount.getGitlabHost()}->${gitlabAccount.username}")
         return CredentialAttributes(gitlabTokenServiceName)
     }
 }

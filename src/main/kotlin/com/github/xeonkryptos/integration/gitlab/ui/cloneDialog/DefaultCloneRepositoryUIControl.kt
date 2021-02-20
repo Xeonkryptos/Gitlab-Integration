@@ -16,10 +16,12 @@ import com.github.xeonkryptos.integration.gitlab.util.invokeOnDispatchThread
 import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.ImageLoader
+import com.intellij.util.concurrency.annotations.RequiresEdt
+import com.intellij.util.progress.ProgressVisibilityManager
 import com.intellij.util.ui.ImageUtil
 import com.intellij.util.ui.cloneDialog.AccountMenuItem
 import com.intellij.util.ui.cloneDialog.AccountMenuPopupStep
@@ -39,11 +41,18 @@ import javax.swing.tree.DefaultMutableTreeNode
 class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRepositoryUI? = null, private val userProvider: UserProvider) : CloneRepositoryUIControl {
 
     private val applicationManager = ApplicationManager.getApplication()
-    private val progressManager = ProgressManager.getInstance()
 
     private val gitlabApiManager = GitlabApiManager(project)
     private val gitlabSettings = GitlabSettingsService.getInstance(project).state
     private val authenticationManager = AuthenticationManager.getInstance(project)
+
+    private val progressIndicator: ProgressVisibilityManager = object: ProgressVisibilityManager() {
+        override fun getModalityState(): ModalityState = ModalityState.any()
+
+        override fun setProgressVisible(visible: Boolean) {
+            this@DefaultCloneRepositoryUIControl.ui?.tree?.setPaintBusy(visible)
+        }
+    }
 
     private val popupMenuMouseAdapter = object : MouseAdapter() {
         override fun mouseClicked(e: MouseEvent?) = showPopupMenu()
@@ -75,18 +84,15 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
             val showSeparatorAbove = index != 0
 
             accountActions += AccountMenuItem.Action(GitlabBundle.message("open.on.gitlab.action"), { BrowserUtil.browse(userEntry.value.server) }, AllIcons.Ide.External_link_arrow)
-            if (!userEntry.key.signedIn) {
+            val signedIn: Boolean = authenticationManager.hasAuthenticationTokenFor(userEntry.key)
+            if (!signedIn) {
                 accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.log.in"), {
-                    if (!userEntry.key.signedIn) {
-                        if (authenticationManager.hasAuthenticationTokenFor(userEntry.key)) {
-                            userEntry.key.signedIn = true
-                        } else {
-                            // TODO: Make it possible to re-enter token. Keep in mind: Another token for another user might be added. Results in another account!
-                        }
-                    }
+                    // TODO: Make it possible to re-enter token. Keep in mind: A token is user-specific and a token for another account might be added. Thus, results in another account!
                 }, showSeparatorAbove = true)
             }
-            accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.log.out"), { userEntry.key.signedIn = false }, showSeparatorAbove = userEntry.key.signedIn)
+            accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.log.out"), {
+                authenticationManager.deleteAuthenticationFor(userEntry.key)
+            }, showSeparatorAbove = signedIn)
             accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.delete"), {
                 userEntry.key.delete()
                 authenticationManager.deleteAuthenticationFor(userEntry.key)
@@ -103,79 +109,76 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
         val connection = applicationManager.messageBus.connect(ui)
         connection.subscribe(GitlabAccountStateNotifier.ACCOUNT_STATE_TOPIC, object : GitlabAccountStateNotifier {
             override fun onGitlabAccountCreated(gitlabAccount: GitlabAccount) {
-                if (canAuthenticateAgainstGitlab(gitlabAccount)) {
-                    reloadData()
+                if (authenticationManager.hasAuthenticationTokenFor(gitlabAccount)) {
+                    reloadData(gitlabAccount)
                 }
             }
 
             override fun onGitlabAccountDeleted(gitlabAccount: GitlabAccount) {
-                val hasSignedInAccount = gitlabSettings.hasGitlabAccountBy { canAuthenticateAgainstGitlab(it) }
-                if (hasSignedInAccount) {
-                    ApplicationManager.getApplication().invokeOnDispatchThread(ui.repositoryPanel) { removeAccountProject(gitlabAccount) }
-                }
+                ApplicationManager.getApplication().invokeOnDispatchThread(ui.repositoryPanel) { removeAccountProject(gitlabAccount) }
             }
         })
         connection.subscribe(GitlabLoginChangeNotifier.LOGIN_STATE_CHANGED_TOPIC, object : GitlabLoginChangeNotifier {
             override fun onSignIn(gitlabAccount: GitlabAccount) {
-                if (!canAuthenticateAgainstGitlab(gitlabAccount)) {
+                if (!authenticationManager.hasAuthenticationTokenFor(gitlabAccount)) {
                     ApplicationManager.getApplication().invokeOnDispatchThread(ui.repositoryPanel) { removeAccountProject(gitlabAccount) }
+                } else {
+                    reloadData(gitlabAccount)
                 }
             }
 
             override fun onSignOut(gitlabAccount: GitlabAccount) {
-                val hasSignedInAccount = gitlabSettings.hasGitlabAccountBy { canAuthenticateAgainstGitlab(it) }
-                if (hasSignedInAccount) {
-                    ApplicationManager.getApplication().invokeOnDispatchThread(ui.repositoryPanel) { removeAccountProject(gitlabAccount) }
-                }
+                ApplicationManager.getApplication().invokeOnDispatchThread(ui.repositoryPanel) { removeAccountProject(gitlabAccount) }
             }
         })
     }
 
-    override fun reloadData() {
-        progressManager.runProcessWithProgressSynchronously({
-                                                                val gitlabAccounts = gitlabSettings.getAllGitlabAccountsBy { authenticationManager.hasAuthenticationTokenFor(it) }
-                                                                val gitlabUsersMap = gitlabApiManager.retrieveGitlabUsersFor(gitlabAccounts)
+    override fun reloadData(gitlabAccount: GitlabAccount?) {
+        progressIndicator.run {
+            val gitlabAccounts: List<GitlabAccount> = gitlabSettings.getAllGitlabAccountsBy { authenticationManager.hasAuthenticationTokenFor(it) }
+            val gitlabUsersMap = gitlabApiManager.retrieveGitlabUsersFor(gitlabAccounts)
 
-                                                                applicationManager.invokeLater {
-                                                                    val firstUserEntry = gitlabUsersMap.firstOrNull()
-                                                                    if (firstUserEntry != null) {
-                                                                        addUserAccount(firstUserEntry.value)
-                                                                    }
-                                                                }
+            applicationManager.invokeLater {
+                val firstUserEntry = gitlabUsersMap.firstOrNull()
+                if (firstUserEntry != null) {
+                    addUserAccount(firstUserEntry.value)
+                }
+            }
 
-                                                                val gitlabProjectsMap = gitlabApiManager.retrieveGitlabProjectsFor(gitlabAccounts)
-                                                                applicationManager.invokeLater {
-                                                                    updateAccountProjects(gitlabProjectsMap)
-                                                                    ui?.expandEntireTree()
-                                                                }
-                                                            }, "Loading repo data", true, project)
+            val gitlabProjectsMap = gitlabApiManager.retrieveGitlabProjectsFor(gitlabAccounts)
+            applicationManager.invokeLater {
+                updateAccountProjects(gitlabProjectsMap)
+                ui?.expandEntireTree()
+            }
+        }
     }
-
-    private fun canAuthenticateAgainstGitlab(gitlabAccount: GitlabAccount): Boolean = gitlabAccount.signedIn && authenticationManager.hasAuthenticationTokenFor(gitlabAccount)
 
     private fun addUserAccount(gitlabUser: GitlabUser?) {
-        var avatar = gitlabUser?.avatar
-        avatar = if (avatar != null) {
-            ImageUtil.scaleImage(avatar, VcsCloneDialogUiSpec.Components.avatarSize, VcsCloneDialogUiSpec.Components.avatarSize)
-        } else {
-            val defaultAvatarImage = ImageLoader.loadFromResource(GitlabUtil.GITLAB_ICON_PATH, javaClass)
-            ImageUtil.scaleImage(defaultAvatarImage, VcsCloneDialogUiSpec.Components.avatarSize, VcsCloneDialogUiSpec.Components.avatarSize)
-        }
-        val userLabel = JLabel().apply {
-            icon = ImageIcon(avatar)
-            toolTipText = gitlabUser?.username
-            isOpaque = false
-            addMouseListener(popupMenuMouseAdapter)
-        }
         ui?.let {
-            it.usersPanel.add(userLabel)
-            it.usersPanel.invalidate()
+            if (it.usersPanel.components.isEmpty()) {
+                var avatar = gitlabUser?.avatar
+                avatar = if (avatar != null) {
+                    ImageUtil.scaleImage(avatar, VcsCloneDialogUiSpec.Components.avatarSize, VcsCloneDialogUiSpec.Components.avatarSize)
+                } else {
+                    val defaultAvatarImage = ImageLoader.loadFromResource(GitlabUtil.GITLAB_ICON_PATH, javaClass)
+                    ImageUtil.scaleImage(defaultAvatarImage, VcsCloneDialogUiSpec.Components.avatarSize, VcsCloneDialogUiSpec.Components.avatarSize)
+                }
+                val userLabel = JLabel().apply {
+                    icon = ImageIcon(avatar)
+                    toolTipText = gitlabUser?.username
+                    isOpaque = false
+                    addMouseListener(popupMenuMouseAdapter)
+                }
+                it.usersPanel.add(userLabel)
+                it.usersPanel.invalidate()
 
-            it.repositoryPanel.revalidate()
-            it.repositoryPanel.repaint()
+                it.repositoryPanel.revalidate()
+                it.repositoryPanel.repaint()
+            }
         }
     }
 
+    @RequiresEdt
     private fun updateAccountProjects(accountProjects: Map<GitlabAccount, List<GitlabProject>>) {
         (ui?.model?.treeModel?.root as? DefaultMutableTreeNode)?.let { defaultMutableTreeNodeRoot ->
             defaultMutableTreeNodeRoot.removeAllChildren()
@@ -207,11 +210,12 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
         }
     }
 
-    fun removeAccountProject(gitlabAccount: GitlabAccount) {
+    @RequiresEdt
+    private fun removeAccountProject(gitlabAccount: GitlabAccount) {
         val gitlabTreeNodeName = createGitlabTreeNodeName(gitlabAccount)
         (ui?.model?.treeModel?.root as? DefaultMutableTreeNode)?.let { rootNode ->
             val childCount = rootNode.childCount
-            for (i in 0..childCount) {
+            for (i in 0 until childCount) {
                 val childAt = rootNode.getChildAt(i) as DefaultMutableTreeNode
                 val treeNodeEntry = childAt.userObject as TreeNodeEntry
                 if (treeNodeEntry.pathName == gitlabTreeNodeName) {
@@ -222,6 +226,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
         }
     }
 
+    @RequiresEdt
     private fun repaintTree() {
         ui?.let {
             it.model.reload()
@@ -232,6 +237,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
         }
     }
 
+    @RequiresEdt
     private fun addNodeIntoTree(gitlabProjectPath: String, gitlabProject: GitlabProject, parents: MutableMap<String, DefaultMutableTreeNode>) {
         val parentName = gitlabProjectPath.substringBeforeLast('/')
         if (!parents.containsKey(parentName) && parentName.contains('/')) {
@@ -256,6 +262,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
 
     private fun createGitlabTreeNodeName(gitlabAccount: GitlabAccount) = "${gitlabAccount.getNormalizeGitlabHost()} (${gitlabAccount.username})"
 
+    @RequiresEdt
     override fun updateProjectName(projectName: String?) {
         ui?.directoryField?.trySetChildPath(projectName ?: "")
     }

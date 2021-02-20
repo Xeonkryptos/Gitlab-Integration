@@ -26,7 +26,7 @@ class GitlabApiManager(project: Project) {
 
     fun retrieveGitlabUsersFor(gitlabAccounts: Collection<GitlabAccount>): Map<GitlabAccount, GitlabUser> {
         val users = mutableMapOf<GitlabAccount, GitlabUser>()
-        gitlabAccounts.filter { it.signedIn }.forEach { gitlabAccount ->
+        gitlabAccounts.filter { authenticationManager.hasAuthenticationTokenFor(it) }.forEach { gitlabAccount ->
             var gitlabApi: GitLabApi? = null
             try {
                 gitlabApi = openGitlabApiAccess(gitlabAccount)
@@ -42,7 +42,7 @@ class GitlabApiManager(project: Project) {
 
     fun retrieveGitlabProjectsFor(gitlabAccounts: Collection<GitlabAccount>): Map<GitlabAccount, List<GitlabProject>> {
         val accountProjects = mutableMapOf<GitlabAccount, List<GitlabProject>>()
-        gitlabAccounts.filter { it.signedIn }.forEach { gitlabAccount ->
+        gitlabAccounts.filter { authenticationManager.hasAuthenticationTokenFor(it) }.forEach { gitlabAccount ->
             var gitlabApi: GitLabApi? = null
             try {
                 gitlabApi = openGitlabApiAccess(gitlabAccount)
@@ -55,19 +55,6 @@ class GitlabApiManager(project: Project) {
             }
         }
         return accountProjects
-    }
-
-    fun loadGitlabUser(gitlabAccount: GitlabAccount): GitlabUser {
-        var gitlabApi: GitLabApi? = null
-        try {
-            gitlabApi = openGitlabApiAccess(gitlabAccount)
-            val gitlabUser = gitlabApi.userApi.currentUser
-
-            gitlabAccount.signedIn = true
-            return GitlabUser(gitlabUser)
-        } finally {
-            gitlabApi?.close()
-        }
     }
 
     fun loadGitlabUser(gitlabHostSettings: GitlabHostSettings, accessToken: String): GitlabUser {
@@ -88,17 +75,12 @@ class GitlabApiManager(project: Project) {
 
         val targetGitlabHost = if (gitlabHost.endsWith("/")) gitlabHost.substring(0, gitlabHost.length - 1); else gitlabHost
         val gitlabAccessToken by lazy { authenticationManager.getAuthenticationTokenFor(gitlabAccount) }
-        val gitlabPassword by lazy { authenticationManager.getAuthenticationPasswordFor(gitlabAccount) }
 
-        val gitlabApi: GitLabApi
-        when {
-            gitlabAccessToken != null -> gitlabApi = GitLabApi(targetGitlabHost, gitlabAccessToken).apply {
+        if (gitlabAccessToken != null) {
+            return GitLabApi(targetGitlabHost, gitlabAccessToken).apply {
                 ignoreCertificateErrors = gitlabSettingsService.state.gitlabHostSettings[targetGitlabHost]?.disableSslVerification ?: false
             }
-            gitlabPassword != null    -> gitlabApi =
-                GitLabApi.oauth2Login(targetGitlabHost, gitlabAccount.username, gitlabPassword, gitlabSettingsService.state.gitlabHostSettings[targetGitlabHost]?.disableSslVerification ?: false)
-            else                      -> throw IllegalArgumentException("Cannot access gitlab instance for host $targetGitlabHost with user $username. Missing access token to authenticate")
         }
-        return gitlabApi
+        throw IllegalArgumentException("Cannot access gitlab instance for host $targetGitlabHost with user $username. Missing access token to authenticate")
     }
 }

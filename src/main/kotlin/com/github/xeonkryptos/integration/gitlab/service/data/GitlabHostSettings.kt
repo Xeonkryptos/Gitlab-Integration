@@ -1,9 +1,7 @@
 package com.github.xeonkryptos.integration.gitlab.service.data
 
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabAccountStateNotifier
-import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.project.Project
 import com.intellij.util.messages.MessageBus
 import com.intellij.util.xmlb.annotations.OptionTag
 import com.intellij.util.xmlb.annotations.XCollection
@@ -59,14 +57,8 @@ data class GitlabHostSettings(@Volatile var gitlabHost: String = "") {
         }
     }
 
-    internal fun onLoadingFinished(project: Project) {
-        val authenticationManager = AuthenticationManager.getInstance(project)
-        gitlabAccounts.forEach { gitlabAccount ->
-            gitlabAccount.setGitlabHostSettingsOwner(this)
-            if (!authenticationManager.hasAuthenticationTokenFor(gitlabAccount)) {
-                gitlabAccount.signedIn = false
-            }
-        }
+    internal fun onLoadingFinished() {
+        gitlabAccounts.forEach { it.setGitlabHostSettingsOwner(this) }
     }
 
     fun isModified(gitlabHostSetting: GitlabHostSettings): Boolean {

@@ -1,6 +1,5 @@
 package com.github.xeonkryptos.integration.gitlab.service.data
 
-import com.intellij.openapi.project.Project
 import com.intellij.util.xmlb.annotations.XCollection
 import com.jetbrains.rd.util.concurrentMapOf
 
@@ -8,8 +7,8 @@ data class GitlabSettings(@Volatile @XCollection(propertyElementName = "gitlabHo
 
     val gitlabHostSettings: Map<String, GitlabHostSettings> = mutableGitlabHostSettings
 
-    fun onLoadingFinished(project: Project) {
-        mutableGitlabHostSettings.values.forEach { it.onLoadingFinished(project) }
+    fun onLoadingFinished() {
+        mutableGitlabHostSettings.values.forEach { it.onLoadingFinished() }
     }
 
     fun getOrCreateGitlabHostSettings(gitlabHost: String): GitlabHostSettings {

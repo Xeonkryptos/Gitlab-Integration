@@ -42,8 +42,6 @@ class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
 
     val tokenLoginPanel: DialogPanel
 
-    var onSwitchLoginMethod: (() -> Unit)? = null
-
     init {
         val errorLabel = JBLabel().apply {
             setAllowAutoWrapping(true)
@@ -52,7 +50,7 @@ class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
 
         tokenLoginPanel = panel(title = "Gitlab Login via Token") {
             row("Gitlab Host: ") { gitlabHostTxtField().applyIfEnabled().focused() }
-            row("Gitlab Token: ") { gitlabAccessTokenTxtField().applyIfEnabled() }
+            row("Gitlab Token: ") { gitlabAccessTokenTxtField().applyIfEnabled().onApply { println("Test") } }
             row {
                 button("Log in") {
                     val gitlabHost = gitlabHostTxtField.text
@@ -65,7 +63,6 @@ class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
                                 val gitlabUser = gitlabApiManager.loadGitlabUser(gitlabHostSettings, gitlabAccessToken)
                                 val gitlabAccount = gitlabHostSettings.createGitlabAccount(gitlabUser.username)
                                 authenticationManager.storeAuthentication(gitlabAccount, gitlabAccessToken)
-                                gitlabAccount.signedIn = true
                             }
                         }
                         ProgressManager.getInstance().runProcessWithProgressAsynchronously(backgroundTask, EmptyProgressIndicator(ModalityState.NON_MODAL))
@@ -75,9 +72,6 @@ class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
                         errorRow?.visible = true
                     }
                 }.enableIf(AccessTokenLoginPredicate())
-            }
-            row {
-                link("Login via username and password") { onSwitchLoginMethod?.invoke() }
             }
             errorRow = row(errorLabel) {
                 visible = false

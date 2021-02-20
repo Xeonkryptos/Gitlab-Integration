@@ -17,6 +17,7 @@ import com.intellij.ui.SearchTextField
 import com.intellij.ui.layout.LCFlags
 import com.intellij.ui.layout.panel
 import com.intellij.ui.treeStructure.Tree
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import git4idea.remote.GitRememberedInputs
 import java.awt.FlowLayout
@@ -81,11 +82,16 @@ class CloneRepositoryUI(private val project: Project, userProvider: UserProvider
         controller.ui = this
     }
 
+    @RequiresEdt
     fun expandEntireTree() {
         var index = 0
         while (index < tree.rowCount) {
             tree.expandRow(index++)
         }
+    }
+
+    fun reloadData() {
+        controller.reloadData()
     }
 
     override fun dispose() {}

@@ -11,7 +11,7 @@ import com.intellij.openapi.project.Project
  * @since 17.09.2020
  */
 @State(name = "gitlab-settings", reloadable = true)
-class GitlabSettingsService(private val project: Project) : PersistentStateComponent<GitlabSettings> {
+class GitlabSettingsService(@Suppress("UNUSED_PARAMETER") project: Project) : PersistentStateComponent<GitlabSettings> {
 
     companion object {
 
@@ -33,7 +33,7 @@ class GitlabSettingsService(private val project: Project) : PersistentStateCompo
     override fun getState(): GitlabSettings = gitlabData
 
     override fun loadState(state: GitlabSettings) {
-        state.onLoadingFinished(project)
+        state.onLoadingFinished()
         gitlabData = state
     }
 }
