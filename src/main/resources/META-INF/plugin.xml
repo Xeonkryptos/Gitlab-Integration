@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.github.xeonkryptos.integration</id>
     <name>Gitlab-Integration</name>
-    <vendor>xeonkryptos</vendor>
+    <vendor>xeonkryptos (XeonAppDev@gmail.com)</vendor>
 
     <!-- Product and plugin compatibility requirements -->
     <!-- https://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html -->

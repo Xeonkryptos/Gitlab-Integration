@@ -1,13 +1,17 @@
 package com.github.xeonkryptos.integration.gitlab.settings.ui;
 
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService;
-import com.github.xeonkryptos.integration.gitlab.service.data.GitlabHostSettings;
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabSettings;
 import com.intellij.openapi.project.Project;
+import com.intellij.ui.AnActionButtonRunnable;
+import com.intellij.ui.BooleanTableCellEditor;
+import com.intellij.ui.BooleanTableCellRenderer;
 import com.intellij.ui.ToolbarDecorator;
 import com.intellij.ui.table.JBTable;
-import java.util.Map;
 import javax.swing.JPanel;
+import javax.swing.table.DefaultTableColumnModel;
+import javax.swing.table.TableColumn;
+import javax.swing.table.TableColumnModel;
 
 /**
  * @author Xeonkryptos
@@ -15,33 +19,21 @@ import javax.swing.JPanel;
  */
 public class GitlabIntegrationSettingsForm {
 
-    private final GitlabSettings settings;
-
     private final GitlabHostsTableModel gitlabHostsTableModel;
 
-    private JPanel settingsPanel;
     private JBTable gitlabHostsTbl;
+    private JPanel settingsPanel;
+    @SuppressWarnings("unused")
+    private JPanel gitlabTablePanel;
 
     public GitlabIntegrationSettingsForm(Project project) {
-        settings = GitlabSettingsService.getInstance(project).getState();
-
+        GitlabSettings settings = GitlabSettingsService.getInstance(project).getState();
         gitlabHostsTableModel = new GitlabHostsTableModel(settings);
         gitlabHostsTbl.setModel(gitlabHostsTableModel);
-        ToolbarDecorator.createDecorator(gitlabHostsTbl);
-
-        reset();
     }
 
     public boolean isModified() {
-        Map<String, GitlabHostSettings> gitlabHostSettings = settings.getGitlabHostSettings();
-        for (GitlabHostSettings gitlabHostUiSetting : gitlabHostsTableModel.getGitlabHostSettings()) {
-            String gitlabHost = gitlabHostUiSetting.getGitlabHost();
-            GitlabHostSettings storedGitlabHostSetting = gitlabHostSettings.get(gitlabHost);
-            if (!storedGitlabHostSetting.equals(gitlabHostUiSetting)) {
-                return true;
-            }
-        }
-        return false;
+        return gitlabHostsTableModel.isModified();
     }
 
     public void apply() {
@@ -54,5 +46,41 @@ public class GitlabIntegrationSettingsForm {
 
     public JPanel getSettingsPanel() {
         return settingsPanel;
+    }
+
+    private void createUIComponents() {
+        TableColumn gitlabHostColumn = new TableColumn(0);
+        gitlabHostColumn.setHeaderValue("Gitlab host");
+
+        TableColumn gitlabSslVerificationColumn = new TableColumn(1);
+        gitlabSslVerificationColumn.setHeaderValue("Disable certificate verification");
+        gitlabSslVerificationColumn.setCellRenderer(new BooleanTableCellRenderer());
+        gitlabSslVerificationColumn.setCellEditor(new BooleanTableCellEditor());
+
+        TableColumn gitlabUsernameColumn = new TableColumn(2);
+        gitlabUsernameColumn.setHeaderValue("Username");
+
+        TableColumn gitlabResolveOwnProjectsColumn = new TableColumn(3);
+        gitlabResolveOwnProjectsColumn.setHeaderValue("Resolve only own projects");
+        gitlabResolveOwnProjectsColumn.setCellEditor(new BooleanTableCellEditor());
+        gitlabResolveOwnProjectsColumn.setCellRenderer(new BooleanTableCellRenderer());
+
+        TableColumnModel tableColumnModel = new DefaultTableColumnModel();
+        tableColumnModel.addColumn(gitlabHostColumn);
+        tableColumnModel.addColumn(gitlabSslVerificationColumn);
+        tableColumnModel.addColumn(gitlabUsernameColumn);
+        tableColumnModel.addColumn(gitlabResolveOwnProjectsColumn);
+
+        gitlabHostsTbl = new JBTable(null, tableColumnModel);
+        gitlabHostsTbl.setShowGrid(false);
+
+        AnActionButtonRunnable onAddAction = anActionButton -> {
+        };
+        AnActionButtonRunnable onEditAction = anActionButton -> {
+        };
+        AnActionButtonRunnable onRemoveAction = anActionButton -> {
+        };
+
+        gitlabTablePanel = ToolbarDecorator.createDecorator(gitlabHostsTbl).setAddAction(onAddAction).setEditAction(onEditAction).setRemoveAction(onRemoveAction).createPanel();
     }
 }

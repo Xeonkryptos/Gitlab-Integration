@@ -1,21 +1,40 @@
 package com.github.xeonkryptos.integration.gitlab.service.data
 
-import com.github.xeonkryptos.integration.gitlab.util.Observable
+import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabLoginChangeNotifier
+import com.github.xeonkryptos.integration.gitlab.util.invokeOnDispatchThread
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.util.messages.MessageBus
+import com.intellij.util.xmlb.annotations.OptionTag
+import com.intellij.util.xmlb.annotations.Transient
 
 /**
  * @author Xeonkryptos
  * @since 11.12.2020
  */
-data class GitlabAccount(var username: String) {
+data class GitlabAccount(@Volatile var username: String = "") {
 
-    internal var gitlabHostSettingsOwner: GitlabHostSettings? = null
+    private val messageBus: MessageBus = ApplicationManager.getApplication().messageBus
 
-    val signedInObservable: Observable<Boolean> = Observable(false)
-    var signedIn by signedInObservable
+    @Volatile
+    @Transient
+    private var gitlabHostSettingsOwner: GitlabHostSettings? = null
 
+    @Volatile
+    @OptionTag
+    var signedIn: Boolean = false
+        set(value) {
+            field = value
+
+            val publisher = messageBus.syncPublisher(GitlabLoginChangeNotifier.LOGIN_STATE_CHANGED_TOPIC)
+            if (field) publisher.onSignIn(this)
+            else publisher.onSignOut(this)
+        }
+
+    @Volatile
+    @OptionTag
     var resolveOnlyOwnProjects: Boolean = false
 
-    internal constructor(gitlabHostSettings: GitlabHostSettings, username: String) : this(username) {
+    constructor(gitlabHostSettings: GitlabHostSettings, username: String) : this(username) {
         this.gitlabHostSettingsOwner = gitlabHostSettings
     }
 
@@ -28,7 +47,21 @@ data class GitlabAccount(var username: String) {
         resolveOnlyOwnProjects = gitlabAccount.resolveOnlyOwnProjects
     }
 
+    fun isModified(gitlabAccount: GitlabAccount): Boolean =
+        this != gitlabAccount || signedIn != gitlabAccount.signedIn || resolveOnlyOwnProjects != gitlabAccount.resolveOnlyOwnProjects || gitlabHostSettingsOwner?.gitlabHost != gitlabAccount.gitlabHostSettingsOwner?.gitlabHost
+
     fun getGitlabHost(): String = gitlabHostSettingsOwner!!.gitlabHost
 
     fun getNormalizeGitlabHost(): String = gitlabHostSettingsOwner!!.getNormalizeGitlabHost()
+
+    fun setGitlabHostSettingsOwner(gitlabHostSettingsOwner: GitlabHostSettings) {
+        this.gitlabHostSettingsOwner = gitlabHostSettingsOwner
+    }
+
+    fun deepCopy(): GitlabAccount {
+        val newGitlabAccount = GitlabAccount(username)
+        newGitlabAccount.signedIn = signedIn
+        newGitlabAccount.resolveOnlyOwnProjects = resolveOnlyOwnProjects
+        return newGitlabAccount
+    }
 }

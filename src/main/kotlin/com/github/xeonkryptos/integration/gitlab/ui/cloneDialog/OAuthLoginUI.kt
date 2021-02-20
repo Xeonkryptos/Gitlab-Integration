@@ -4,6 +4,12 @@ import com.github.xeonkryptos.integration.gitlab.api.GitlabApiManager
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.progress.EmptyProgressIndicator
+import com.intellij.openapi.progress.PerformInBackgroundOption
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.ui.DocumentAdapter
@@ -19,7 +25,7 @@ import java.awt.Color
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class OAuthLoginUI(project: Project, private val gitlabApiManager: GitlabApiManager, private val onLoginAction: () -> Unit) {
+class OAuthLoginUI(project: Project, private val gitlabApiManager: GitlabApiManager) {
 
     private companion object {
         private val LOG = GitlabUtil.LOG
@@ -59,10 +65,13 @@ class OAuthLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
                         val gitlabHostSettings = gitlabSettings.getOrCreateGitlabHostSettings(gitlabHost)
                         val gitlabAccount = gitlabHostSettings.createGitlabAccount(gitlabUsername)
 
-                        authenticationManager.storeAuthenticationPassword(gitlabAccount, gitlabPassword)
-                        gitlabApiManager.loadGitlabUser(gitlabAccount)
-
-                        onLoginAction.invoke()
+                        val backgroundTask = object : Task.Backgroundable(project, "Downloading user information", false, PerformInBackgroundOption.ALWAYS_BACKGROUND) {
+                            override fun run(indicator: ProgressIndicator) {
+                                authenticationManager.storeAuthenticationPassword(gitlabAccount, gitlabPassword)
+                                gitlabApiManager.loadGitlabUser(gitlabAccount)
+                            }
+                        }
+                        ProgressManager.getInstance().runProcessWithProgressAsynchronously(backgroundTask, EmptyProgressIndicator(ModalityState.NON_MODAL))
                     } catch (e: Exception) {
                         LOG.error("Log in with provided username password combination failed.", e, "Host: $gitlabHost", "Username: $gitlabUsername")
                         errorLabel.text = "Log in failed. Reason: ${e.message}"
@@ -99,7 +108,6 @@ class OAuthLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
             })
         }
 
-        override fun invoke(): Boolean =
-            gitlabHostTxtField.text.isNotBlank() && gitlabUsernameTxtField.text.isNotBlank() && gitlabPasswordTxtField.password.isNotEmpty()
+        override fun invoke(): Boolean = gitlabHostTxtField.text.isNotBlank() && gitlabUsernameTxtField.text.isNotBlank() && gitlabPasswordTxtField.password.isNotEmpty()
     }
 }

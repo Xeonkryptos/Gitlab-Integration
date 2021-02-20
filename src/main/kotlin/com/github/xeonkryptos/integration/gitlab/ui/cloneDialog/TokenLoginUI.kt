@@ -4,6 +4,12 @@ import com.github.xeonkryptos.integration.gitlab.api.GitlabApiManager
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.progress.EmptyProgressIndicator
+import com.intellij.openapi.progress.PerformInBackgroundOption
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.ui.DocumentAdapter
@@ -13,12 +19,13 @@ import com.intellij.ui.layout.ComponentPredicate
 import com.intellij.ui.layout.Row
 import com.intellij.ui.layout.panel
 import java.awt.Color
+import javax.swing.event.DocumentListener
 
 /**
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiManager, private val onLoginAction: () -> Unit) {
+class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiManager) {
 
     private companion object {
         private val LOG = GitlabUtil.LOG
@@ -53,12 +60,15 @@ class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
 
                     try {
                         val gitlabHostSettings = gitlabSettings.getOrCreateGitlabHostSettings(gitlabHost)
-                        val gitlabUser = gitlabApiManager.loadGitlabUser(gitlabHostSettings, gitlabAccessToken)
-
-                        val gitlabAccount = gitlabHostSettings.createGitlabAccount(gitlabUser.username)
-                        authenticationManager.storeAuthentication(gitlabAccount, gitlabAccessToken)
-
-                        onLoginAction.invoke()
+                        val backgroundTask = object : Task.Backgroundable(project, "Downloading user information", false, PerformInBackgroundOption.ALWAYS_BACKGROUND) {
+                            override fun run(indicator: ProgressIndicator) {
+                                val gitlabUser = gitlabApiManager.loadGitlabUser(gitlabHostSettings, gitlabAccessToken)
+                                val gitlabAccount = gitlabHostSettings.createGitlabAccount(gitlabUser.username)
+                                authenticationManager.storeAuthentication(gitlabAccount, gitlabAccessToken)
+                                gitlabAccount.signedIn = true
+                            }
+                        }
+                        ProgressManager.getInstance().runProcessWithProgressAsynchronously(backgroundTask, EmptyProgressIndicator(ModalityState.NON_MODAL))
                     } catch (e: Exception) {
                         LOG.error("Log in with provided access token failed.", e, "Host: $gitlabHost")
                         errorLabel.text = "Log in failed. Reason: ${e.message}"
@@ -75,19 +85,17 @@ class TokenLoginUI(project: Project, private val gitlabApiManager: GitlabApiMana
         }
     }
 
-    internal inner class AccessTokenLoginPredicate : ComponentPredicate() {
+    private inner class AccessTokenLoginPredicate : ComponentPredicate() {
 
         override fun addListener(listener: (Boolean) -> Unit) {
-            gitlabHostTxtField.document.addDocumentListener(object : DocumentAdapter() {
-                override fun textChanged(e: javax.swing.event.DocumentEvent) {
-                    listener(invoke())
-                }
-            })
-            gitlabAccessTokenTxtField.document.addDocumentListener(object : DocumentAdapter() {
-                override fun textChanged(e: javax.swing.event.DocumentEvent) {
-                    listener(invoke())
-                }
-            })
+            gitlabHostTxtField.document.addDocumentListener(createDocumentChangeListener(listener))
+            gitlabAccessTokenTxtField.document.addDocumentListener(createDocumentChangeListener(listener))
+        }
+
+        private fun createDocumentChangeListener(listener: (Boolean) -> Unit): DocumentListener = object : DocumentAdapter() {
+            override fun textChanged(e: javax.swing.event.DocumentEvent) {
+                listener(invoke())
+            }
         }
 
         override fun invoke(): Boolean = gitlabHostTxtField.text.isNotBlank() && gitlabAccessTokenTxtField.text.isNotBlank()
