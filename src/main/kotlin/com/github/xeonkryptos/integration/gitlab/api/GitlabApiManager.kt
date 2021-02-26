@@ -8,8 +8,8 @@ import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabHostSettings
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.project.Project
-import java.util.stream.Collectors
 import org.gitlab4j.api.GitLabApi
+import java.util.stream.Collectors
 
 /**
  * @author Xeonkryptos
@@ -46,8 +46,8 @@ class GitlabApiManager(project: Project) {
             var gitlabApi: GitLabApi? = null
             try {
                 gitlabApi = openGitlabApiAccess(gitlabAccount)
-                val gitlabProjectsForAccount = gitlabApi.projectApi.ownedProjectsStream.map { GitlabProject(it, gitlabAccount) }.collect(Collectors.toList())
-                accountProjects[gitlabAccount] = gitlabProjectsForAccount
+                val projects = if (gitlabAccount.resolveOnlyOwnProjects) gitlabApi.projectApi.ownedProjectsStream else gitlabApi.projectApi.projectsStream
+                accountProjects[gitlabAccount] = projects.map { GitlabProject(it, gitlabAccount) }.collect(Collectors.toList())
             } catch (e: Exception) {
                 LOG.warn("Failed to retrieve project information for gitlab account $gitlabAccount", e)
             } finally {
