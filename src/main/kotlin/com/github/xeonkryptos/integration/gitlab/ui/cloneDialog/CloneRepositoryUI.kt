@@ -11,9 +11,8 @@ import com.intellij.dvcs.ui.SelectChildTextFieldWithBrowseButton
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.DialogPanel
-import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.SearchTextField
+import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.layout.LCFlags
 import com.intellij.ui.layout.panel
 import com.intellij.ui.treeStructure.Tree
@@ -48,7 +47,7 @@ class CloneRepositoryUI(private val project: Project, userProvider: UserProvider
         addBrowseFolderListener(DvcsBundle.message("clone.destination.directory.browser.title"), DvcsBundle.message("clone.destination.directory.browser.description"), project, fcd)
     }
 
-    val repositoryPanel: DialogPanel
+    val repositoryPanel: JPanel
     var controller: CloneRepositoryUIControl = DefaultCloneRepositoryUIControl(project, this, userProvider)
 
     init {
@@ -66,6 +65,12 @@ class CloneRepositoryUI(private val project: Project, userProvider: UserProvider
             }
         }
         searchField = treeWithSearchComponent.searchField
+        val treePanel = ToolbarDecorator.createDecorator(tree)
+                .setMoveUpAction { controller.loadPreviousRepositories() }
+                .setMoveUpActionUpdater { controller.hasPreviousRepositories() }
+                .setMoveDownAction { controller.loadNextRepositories() }
+                .setMoveDownActionUpdater { controller.hasNextRepositories() }
+                .createPanel()
 
         repositoryPanel = panel(LCFlags.fill) {
             row {
@@ -75,7 +80,7 @@ class CloneRepositoryUI(private val project: Project, userProvider: UserProvider
                     usersPanel().withLargeLeftGap()
                 }
             }
-            row { ScrollPaneFactory.createScrollPane(tree)(grow, push) }
+            row { treePanel(grow, push) }
             row(GitlabBundle.message("clone.dialog.directory.field")) { directoryField(growX, pushX) }
         }
 

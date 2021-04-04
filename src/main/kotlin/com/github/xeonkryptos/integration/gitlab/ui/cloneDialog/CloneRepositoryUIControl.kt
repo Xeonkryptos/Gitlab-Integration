@@ -13,4 +13,12 @@ interface CloneRepositoryUIControl {
     fun updateProjectName(projectName: String?)
 
     fun reloadData(gitlabAccount: GitlabAccount? = null)
+
+    fun hasPreviousRepositories(): Boolean
+
+    fun loadPreviousRepositories()
+
+    fun hasNextRepositories(): Boolean
+
+    fun loadNextRepositories()
 }

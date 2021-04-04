@@ -6,16 +6,21 @@ import jakarta.ws.rs.core.GenericType
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import java.net.URI
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.max
 
-class Pager<T>(baseUri: URI,
-               private val token: String,
-               private val type: GenericType<T>,
-               private val requestingClient: Client,
-               private val entriesPerPage: Int = 50) : IPager<T> {
+class Pager<T>(baseUri: URI, private val token: String, private val type: GenericType<T>, private val requestingClient: Client, private val entriesPerPage: Int = 50) : IPager<T> {
 
+    @Volatile
     private var firstPageUri: URI = baseUri
+
+    @Volatile
     private var previousPageUri: URI? = null
+
+    @Volatile
     private var nextPageUri: URI? = null
+
+    @Volatile
     private var lastPageUri: URI? = null
 
     override fun loadFirstPage(): T {
