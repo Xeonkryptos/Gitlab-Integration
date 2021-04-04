@@ -36,9 +36,22 @@ repositories {
     jcenter()
 }
 dependencies {
-    implementation("org.gitlab4j:gitlab4j-api:4.15.7")
-    runtimeOnly("org.jetbrains.kotlin:kotlin-reflect:1.4.30")
+    implementation("org.glassfish.jersey.core:jersey-client:3.0.1")
+    runtimeOnly("org.glassfish.jersey.media:jersey-media-json-jackson:3.0.1") {
+        // Already available in the IntelliJ environment. Including them even transitively here leads to class loading issues (IntelliJ uses different class loaders for the plugins and the basic environment, etc).
+        exclude("com.fasterxml.jackson.core", "jackson-annotations")
+        exclude("com.fasterxml.jackson.core", "jackson-databind")
+        exclude("com.fasterxml.jackson.core", "jackson-core")
+    }
+
+    implementation("org.glassfish.hk2:hk2-utils:3.0.1")
+    runtimeOnly("org.glassfish.jersey.inject:jersey-hk2:3.0.1")
+
+    runtimeOnly("jakarta.xml.bind:jakarta.xml.bind-api:3.0.0")
+    runtimeOnly("com.sun.xml.bind:jaxb-impl:3.0.0")
+
     implementation(kotlin("stdlib"))
+    runtimeOnly("org.jetbrains.kotlin:kotlin-reflect:1.4.30")
 }
 
 // Configure gradle-intellij-plugin plugin.

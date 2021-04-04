@@ -12,7 +12,8 @@ data class GitlabSettings(@Volatile @XCollection(propertyElementName = "gitlabHo
     }
 
     fun getOrCreateGitlabHostSettings(gitlabHost: String): GitlabHostSettings {
-        return mutableGitlabHostSettings.computeIfAbsent(gitlabHost) { GitlabHostSettings(it) }
+        @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN", "UNCHECKED_CAST")
+        return (mutableGitlabHostSettings as java.util.Map<String, GitlabHostSettings>).computeIfAbsent(gitlabHost) { GitlabHostSettings(it) }
     }
 
     fun isModified(gitlabSettings: GitlabSettings): Boolean {

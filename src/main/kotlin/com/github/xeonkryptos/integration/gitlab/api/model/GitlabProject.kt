@@ -1,17 +1,16 @@
 package com.github.xeonkryptos.integration.gitlab.api.model
 
-import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
-import org.gitlab4j.api.models.Project
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.annotation.JsonProperty
 
 /**
- * A simple wrapper around [Project] of gitlab4j api to avoid confusions with the IntelliJ SDK project pendant [com.intellij.openapi.project.Project]. Simply use this project's get method/property
- * syntax to access its content rather than safe it unwrapped in its own value
- *
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class GitlabProject(project: Project, val gitlabAccount: GitlabAccount) {
+@JsonIgnoreProperties(ignoreUnknown = true)
+class GitlabProject @JsonCreator constructor(@JsonProperty("name_with_namespace", required = true) nameWithNameSpace: String, @JsonProperty("http_url_to_repo") httpUrlToRepo: String?) {
 
-    val viewableProjectPath = project.nameWithNamespace.replace(" / ", "/")
-    val httpProjectUrl: String? = project.httpUrlToRepo
+    val viewableProjectPath: String = nameWithNameSpace.replace(" / ", "/")
+    val httpProjectUrl: String? = httpUrlToRepo
 }

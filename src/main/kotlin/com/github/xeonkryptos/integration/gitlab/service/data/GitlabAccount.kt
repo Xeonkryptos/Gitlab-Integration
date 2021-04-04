@@ -36,6 +36,11 @@ data class GitlabAccount(@Volatile var username: String = "") {
 
     fun getNormalizeGitlabHost(): String = gitlabHostSettingsOwner!!.getNormalizeGitlabHost()
 
+    fun getTargetGitlabHost(): String {
+        val gitlabHost = getGitlabHost()
+        return if (gitlabHost.endsWith("/")) gitlabHost.substring(0, gitlabHost.length - 1) else gitlabHost
+    }
+
     fun setGitlabHostSettingsOwner(gitlabHostSettingsOwner: GitlabHostSettings) {
         this.gitlabHostSettingsOwner = gitlabHostSettingsOwner
     }

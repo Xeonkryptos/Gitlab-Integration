@@ -46,7 +46,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
     private val gitlabSettings = GitlabSettingsService.getInstance(project).state
     private val authenticationManager = AuthenticationManager.getInstance(project)
 
-    private val progressIndicator: ProgressVisibilityManager = object: ProgressVisibilityManager() {
+    private val progressIndicator: ProgressVisibilityManager = object : ProgressVisibilityManager() {
         override fun getModalityState(): ModalityState = ModalityState.any()
 
         override fun setProgressVisible(visible: Boolean) {
@@ -77,7 +77,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
         val menuItems = mutableListOf<AccountMenuItem>()
 
         for ((index, userEntry) in userProvider.getUsers().entries.withIndex()) {
-            val accountTitle = userEntry.value.name ?: userEntry.value.username
+            val accountTitle = userEntry.value.name
             val serverInfo = userEntry.value.server.removePrefix("http://").removePrefix("https://")
             val avatar = ImageIcon(userEntry.value.avatar ?: ImageLoader.loadFromResource(GitlabUtil.GITLAB_ICON_PATH, javaClass))
             val accountActions = mutableListOf<AccountMenuItem.Action>()
@@ -86,9 +86,11 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
             accountActions += AccountMenuItem.Action(GitlabBundle.message("open.on.gitlab.action"), { BrowserUtil.browse(userEntry.value.server) }, AllIcons.Ide.External_link_arrow)
             val signedIn: Boolean = authenticationManager.hasAuthenticationTokenFor(userEntry.key)
             if (!signedIn) {
-                accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.log.in"), {
-                    // TODO: Make it possible to re-enter token. Keep in mind: A token is user-specific and a token for another account might be added. Thus, results in another account!
-                }, showSeparatorAbove = true)
+                accountActions += AccountMenuItem.Action(
+                        GitlabBundle.message("accounts.log.in"),
+                        { // TODO: Make it possible to re-enter token. Keep in mind: A token is user-specific and a token for another account might be added. Thus, results in another account!
+                        },
+                        showSeparatorAbove = true)
             }
             accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.log.out"), {
                 authenticationManager.deleteAuthenticationFor(userEntry.key)
@@ -99,8 +101,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
             }, showSeparatorAbove = true)
 
             menuItems += AccountMenuItem.Account(accountTitle, serverInfo, avatar, accountActions, showSeparatorAbove)
-        }
-        // TODO: Add actions to login into a new account
+        } // TODO: Add actions to login into a new account
 
         AccountsMenuListPopup(project, AccountMenuPopupStep(menuItems)).showUnderneathOf(ui!!.usersPanel)
     }
@@ -201,7 +202,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
                             parents[projectNameWithNamespace] = gitlabProjectTreeNode
                             hostTreeNode.add(gitlabProjectTreeNode)
                         } else if (projectPathEntriesCount >= 1) {
-                            addNodeIntoTree(projectNameWithNamespace, gitlabProject, parents)
+                            addNodeIntoTree(projectNameWithNamespace, gitlabProject, gitlabAccount, parents)
                         }
                     }
                 }
@@ -238,14 +239,14 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
     }
 
     @RequiresEdt
-    private fun addNodeIntoTree(gitlabProjectPath: String, gitlabProject: GitlabProject, parents: MutableMap<String, DefaultMutableTreeNode>) {
+    private fun addNodeIntoTree(gitlabProjectPath: String, gitlabProject: GitlabProject, gitlabAccount: GitlabAccount, parents: MutableMap<String, DefaultMutableTreeNode>) {
         val parentName = gitlabProjectPath.substringBeforeLast('/')
         if (!parents.containsKey(parentName) && parentName.contains('/')) {
-            addNodeIntoTree(parentName, gitlabProject, parents)
+            addNodeIntoTree(parentName, gitlabProject, gitlabAccount, parents)
         }
         if (!parents.containsKey(parentName) && !parentName.contains('/')) {
             parents[parentName] = DefaultMutableTreeNode(TreeNodeEntry(parentName))
-            val gitlabTreeNodeName = createGitlabTreeNodeName(gitlabProject.gitlabAccount)
+            val gitlabTreeNodeName = createGitlabTreeNodeName(gitlabAccount)
             (parents[gitlabTreeNodeName] as DefaultMutableTreeNode).add(parents[parentName])
         }
         if (parents.containsKey(parentName)) {
