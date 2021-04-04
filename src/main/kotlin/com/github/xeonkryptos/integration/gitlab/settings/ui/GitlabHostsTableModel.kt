@@ -63,7 +63,7 @@ class GitlabHostsTableModel(private val originalSettings: GitlabSettings) : Abst
         if (userObject is GitlabAccount) {
             return when (column) {
                 2    -> userObject.username
-                3    -> if (userObject.getNormalizeGitlabHost() != "gitlab.com") userObject.resolveOnlyOwnProjects else true
+                3    -> userObject.resolveOnlyOwnProjects
                 else -> null
             }
         }
@@ -75,7 +75,7 @@ class GitlabHostsTableModel(private val originalSettings: GitlabSettings) : Abst
         if (userObject is GitlabHostSettings && column == 1) {
             return true
         }
-        return userObject is GitlabAccount && column == 3 && userObject.getNormalizeGitlabHost() != "gitlab.com"
+        return userObject is GitlabAccount && column == 3
     }
 
     override fun setValueAt(aValue: Any?, row: Int, column: Int) {

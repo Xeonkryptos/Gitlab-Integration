@@ -8,6 +8,7 @@ import com.intellij.ui.BooleanTableCellEditor;
 import com.intellij.ui.BooleanTableCellRenderer;
 import com.intellij.ui.ToolbarDecorator;
 import com.intellij.ui.table.JBTable;
+
 import javax.swing.JPanel;
 import javax.swing.table.DefaultTableColumnModel;
 import javax.swing.table.TableColumn;
@@ -23,8 +24,7 @@ public class GitlabIntegrationSettingsForm {
 
     private JBTable gitlabHostsTbl;
     private JPanel settingsPanel;
-    @SuppressWarnings("unused")
-    private JPanel gitlabTablePanel;
+    @SuppressWarnings("unused") private JPanel gitlabTablePanel;
 
     public GitlabIntegrationSettingsForm(Project project) {
         GitlabSettings settings = GitlabSettingsService.getInstance(project).getState();
@@ -74,12 +74,9 @@ public class GitlabIntegrationSettingsForm {
         gitlabHostsTbl = new JBTable(null, tableColumnModel);
         gitlabHostsTbl.setShowGrid(false);
 
-        AnActionButtonRunnable onAddAction = anActionButton -> {
-        };
-        AnActionButtonRunnable onEditAction = anActionButton -> {
-        };
-        AnActionButtonRunnable onRemoveAction = anActionButton -> {
-        };
+        AnActionButtonRunnable onAddAction = anActionButton -> {};
+        AnActionButtonRunnable onEditAction = anActionButton -> {};
+        AnActionButtonRunnable onRemoveAction = anActionButton -> {};
 
         gitlabTablePanel = ToolbarDecorator.createDecorator(gitlabHostsTbl).setAddAction(onAddAction).setEditAction(onEditAction).setRemoveAction(onRemoveAction).createPanel();
     }

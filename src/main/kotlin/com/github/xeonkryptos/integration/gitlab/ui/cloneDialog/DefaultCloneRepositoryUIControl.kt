@@ -1,6 +1,7 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
 
 import com.github.xeonkryptos.integration.gitlab.api.GitlabApiManager
+import com.github.xeonkryptos.integration.gitlab.api.PagerProxy
 import com.github.xeonkryptos.integration.gitlab.api.UserProvider
 import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProject
 import com.github.xeonkryptos.integration.gitlab.api.model.GitlabUser
@@ -17,6 +18,8 @@ import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.ImageLoader
@@ -86,11 +89,10 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
             accountActions += AccountMenuItem.Action(GitlabBundle.message("open.on.gitlab.action"), { BrowserUtil.browse(userEntry.value.server) }, AllIcons.Ide.External_link_arrow)
             val signedIn: Boolean = authenticationManager.hasAuthenticationTokenFor(userEntry.key)
             if (!signedIn) {
-                accountActions += AccountMenuItem.Action(
-                        GitlabBundle.message("accounts.log.in"),
-                        { // TODO: Make it possible to re-enter token. Keep in mind: A token is user-specific and a token for another account might be added. Thus, results in another account!
-                        },
-                        showSeparatorAbove = true)
+                accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.log.in"),
+                                                         { // TODO: Make it possible to re-enter token. Keep in mind: A token is user-specific and a token for another account might be added. Thus, results in another account!
+                                                         },
+                                                         showSeparatorAbove = true)
             }
             accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.log.out"), {
                 authenticationManager.deleteAuthenticationFor(userEntry.key)
@@ -135,23 +137,26 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
     }
 
     override fun reloadData(gitlabAccount: GitlabAccount?) {
-        progressIndicator.run {
-            val gitlabAccounts: List<GitlabAccount> = gitlabSettings.getAllGitlabAccountsBy { authenticationManager.hasAuthenticationTokenFor(it) }
-            val gitlabUsersMap = gitlabApiManager.retrieveGitlabUsersFor(gitlabAccounts)
+        progressIndicator.run(object : Task.Backgroundable(project, "Repositories download", true, ALWAYS_BACKGROUND) {
 
-            applicationManager.invokeLater {
-                val firstUserEntry = gitlabUsersMap.firstOrNull()
-                if (firstUserEntry != null) {
-                    addUserAccount(firstUserEntry.value)
+            override fun run(indicator: ProgressIndicator) {
+                val gitlabAccounts: List<GitlabAccount> = gitlabSettings.getAllGitlabAccountsBy { authenticationManager.hasAuthenticationTokenFor(it) }
+                val gitlabUsersMap = gitlabApiManager.retrieveGitlabUsersFor(gitlabAccounts)
+
+                applicationManager.invokeLater {
+                    val firstUserEntry = gitlabUsersMap.firstOrNull()
+                    if (firstUserEntry != null) {
+                        addUserAccount(firstUserEntry.value)
+                    }
+                }
+
+                val gitlabProjectsMap = gitlabApiManager.retrieveGitlabProjectsFor(gitlabAccounts)
+                applicationManager.invokeLater {
+                    updateAccountProjects(gitlabProjectsMap)
+                    ui?.expandEntireTree()
                 }
             }
-
-            val gitlabProjectsMap = gitlabApiManager.retrieveGitlabProjectsFor(gitlabAccounts)
-            applicationManager.invokeLater {
-                updateAccountProjects(gitlabProjectsMap)
-                ui?.expandEntireTree()
-            }
-        }
+        })
     }
 
     private fun addUserAccount(gitlabUser: GitlabUser?) {
@@ -180,12 +185,12 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
     }
 
     @RequiresEdt
-    private fun updateAccountProjects(accountProjects: Map<GitlabAccount, List<GitlabProject>>) {
+    private fun updateAccountProjects(accountProjects: Map<GitlabAccount, PagerProxy<List<GitlabProject>>>) {
         (ui?.model?.treeModel?.root as? DefaultMutableTreeNode)?.let { defaultMutableTreeNodeRoot ->
             defaultMutableTreeNodeRoot.removeAllChildren()
 
             val parents = mutableMapOf<String, DefaultMutableTreeNode>()
-            accountProjects.forEach { (gitlabAccount, gitlabProjects) ->
+            accountProjects.forEach { (gitlabAccount, gitlabProjectsPager) ->
                 val gitlabAccountRootNodeName = createGitlabTreeNodeName(gitlabAccount)
                 val hostTreeNode = parents.computeIfAbsent(gitlabAccountRootNodeName) {
                     val treeNode = DefaultMutableTreeNode(TreeNodeEntry(it))
@@ -193,7 +198,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
                     return@computeIfAbsent treeNode
                 }
 
-                gitlabProjects.forEach { gitlabProject ->
+                gitlabProjectsPager.currentData?.forEach { gitlabProject ->
                     val projectNameWithNamespace = gitlabProject.viewableProjectPath
                     if (!parents.containsKey(projectNameWithNamespace)) {
                         val projectPathEntriesCount = projectNameWithNamespace.count { it == '/' }

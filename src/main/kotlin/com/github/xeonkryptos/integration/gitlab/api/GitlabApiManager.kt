@@ -10,10 +10,11 @@ import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.project.Project
 import jakarta.ws.rs.client.Client
 import jakarta.ws.rs.core.GenericType
-import jakarta.ws.rs.core.MediaType
+import jakarta.ws.rs.core.UriBuilder
 import org.glassfish.hk2.utilities.reflection.ParameterizedTypeImpl
 import org.glassfish.jersey.client.JerseyClientBuilder
 import java.net.Socket
+import java.net.URI
 import java.security.SecureRandom
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
@@ -27,8 +28,12 @@ import javax.net.ssl.X509ExtendedTrustManager
  * @since 17.09.2020
  */
 class GitlabApiManager(project: Project) {
+
     private companion object {
         private val LOG = GitlabUtil.LOG
+
+        @JvmStatic
+        private val GITLAB_PROJECTS_GENERIC_TYPE: GenericType<List<GitlabProject>> = GenericType<List<GitlabProject>>(ParameterizedTypeImpl(List::class.java, GitlabProject::class.java))
     }
 
     private val gitlabSettingsService = GitlabSettingsService.getInstance(project)
@@ -41,21 +46,27 @@ class GitlabApiManager(project: Project) {
             override fun getAcceptedIssuers(): Array<X509Certificate>? {
                 return null
             }
+
             @Throws(CertificateException::class)
             override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {
             }
+
             @Throws(CertificateException::class)
             override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {
             }
+
             @Throws(CertificateException::class)
             override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String, socket: Socket) {
             }
+
             @Throws(CertificateException::class)
             override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String, engine: SSLEngine) {
             }
+
             @Throws(CertificateException::class)
             override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String, socket: Socket) {
             }
+
             @Throws(CertificateException::class)
             override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String, engine: SSLEngine) {
             }
@@ -82,25 +93,25 @@ class GitlabApiManager(project: Project) {
         return users
     }
 
-    fun retrieveGitlabProjectsFor(gitlabAccounts: Collection<GitlabAccount>): Map<GitlabAccount, List<GitlabProject>> {
-        val accountProjects = mutableMapOf<GitlabAccount, List<GitlabProject>>()
+    fun retrieveGitlabProjectsFor(gitlabAccounts: Collection<GitlabAccount>): Map<GitlabAccount, PagerProxy<List<GitlabProject>>> {
+        val accountProjects = mutableMapOf<GitlabAccount, PagerProxy<List<GitlabProject>>>()
         gitlabAccounts.filter { authenticationManager.hasAuthenticationTokenFor(it) }.forEach { gitlabAccount ->
             try {
                 val gitlabClient = getGitlabApiClient(gitlabAccount)
                 val token = getToken(gitlabAccount)
-                val invocation = gitlabClient.target(gitlabAccount.getTargetGitlabHost())
+                val baseUri: URI = UriBuilder.fromUri(gitlabAccount.getTargetGitlabHost())
                         .path("api/v4/projects")
                         .queryParam("owned", gitlabAccount.resolveOnlyOwnProjects)
                         .queryParam("membership", gitlabAccount.resolveOnlyOwnProjects)
                         .queryParam("order_by", "id")
-                        .queryParam("simple", true) // The required fields are stored in the simple version. Reduces network traffic
-                        .queryParam("per_page", 50)
-                        .request(MediaType.APPLICATION_JSON_TYPE)
-                        .header("PRIVATE-TOKEN", token)
-                        .buildGet()
-                // TODO: Work with pagination. important param: per_page <- contains the number of entries per page
-                val genericType: GenericType<List<GitlabProject>> = GenericType<List<GitlabProject>>(ParameterizedTypeImpl(List::class.java, GitlabProject::class.java))
-                accountProjects[gitlabAccount] = invocation.invoke(genericType)
+                        .queryParam("simple", true)
+                        .build()
+                token?.let {
+                    val pager = Pager(baseUri, it, GITLAB_PROJECTS_GENERIC_TYPE, gitlabClient)
+                    val pagerProxy = PagerProxy(pager)
+                    accountProjects[gitlabAccount] = pagerProxy
+                    pagerProxy.loadFirstPage()
+                }
             } catch (e: Exception) {
                 LOG.warn("Failed to retrieve project information for gitlab account $gitlabAccount", e)
             }
