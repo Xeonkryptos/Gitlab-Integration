@@ -76,7 +76,10 @@ public class GitlabIntegrationSettingsForm {
 
         AnActionButtonRunnable onAddAction = anActionButton -> {};
         AnActionButtonRunnable onEditAction = anActionButton -> {};
-        AnActionButtonRunnable onRemoveAction = anActionButton -> {};
+        AnActionButtonRunnable onRemoveAction = anActionButton -> {
+            int selectedRow = gitlabHostsTbl.getSelectedRow();
+            gitlabHostsTableModel.removeEntry(selectedRow);
+        };
 
         gitlabTablePanel = ToolbarDecorator.createDecorator(gitlabHostsTbl).setAddAction(onAddAction).setEditAction(onEditAction).setRemoveAction(onRemoveAction).createPanel();
     }

@@ -16,15 +16,12 @@ import javax.swing.table.AbstractTableModel
  */
 class GitlabHostsTableModel(private val originalSettings: GitlabSettings) : AbstractTableModel() {
 
-    private val currentSettings = originalSettings.deepCopy()
+    private val currentSettings: GitlabSettings = originalSettings.deepCopy()
 
     private val flattenedSettings: MutableList<Any> = mutableListOf()
 
     init {
-        currentSettings.gitlabHostSettings.values.forEach { gitlabHostSettings ->
-            flattenedSettings.add(gitlabHostSettings)
-            gitlabHostSettings.gitlabAccounts.forEach { gitlabAccount -> flattenedSettings.add(gitlabAccount) }
-        }
+        rebuildFlattenedSettings()
     }
 
     override fun getColumnCount(): Int = 4
@@ -87,13 +84,44 @@ class GitlabHostsTableModel(private val originalSettings: GitlabSettings) : Abst
         }
     }
 
+    fun removeEntry(selectedRow: Int) {
+        val removedEntry = flattenedSettings.removeAt(selectedRow)
+        var lastDeletedRowIndex: Int = selectedRow
+        if (removedEntry is GitlabHostSettings) {
+            val size = flattenedSettings.size + 1
+
+            while (flattenedSettings.size > 0 && flattenedSettings[selectedRow] is GitlabAccount) flattenedSettings.removeAt(selectedRow)
+            currentSettings.removeGitlabHostSettings(removedEntry.gitlabHost)
+
+            lastDeletedRowIndex = size - flattenedSettings.size
+        } else if (removedEntry is GitlabAccount) {
+            removedEntry.delete()
+        }
+        fireTableRowsDeleted(selectedRow, lastDeletedRowIndex)
+    }
+
     fun apply() {
         currentSettings.gitlabHostSettings.values.forEach { originalSettings.gitlabHostSettings[it.gitlabHost]?.updateWith(it) }
+        originalSettings.gitlabHostSettings.keys.filterNot { currentSettings.containsGitlabHostSettings(it) }.forEach { originalSettings.removeGitlabHostSettings(it) }
     }
 
     fun isModified(): Boolean = originalSettings.isModified(currentSettings)
 
     fun reset() {
         currentSettings.gitlabHostSettings.values.forEach { it.updateWith(originalSettings.gitlabHostSettings[it.gitlabHost]!!) }
+        originalSettings.gitlabHostSettings.filterNot { entry -> currentSettings.containsGitlabHostSettings(entry.key) }
+                .forEach { entry -> currentSettings.getOrCreateGitlabHostSettings(entry.key).updateWith(entry.value) }
+
+        flattenedSettings.clear()
+        rebuildFlattenedSettings()
+
+        fireTableDataChanged()
+    }
+
+    private fun rebuildFlattenedSettings() {
+        currentSettings.gitlabHostSettings.values.forEach { gitlabHostSettings ->
+            flattenedSettings.add(gitlabHostSettings)
+            gitlabHostSettings.gitlabAccounts.forEach { gitlabAccount -> flattenedSettings.add(gitlabAccount) }
+        }
     }
 }

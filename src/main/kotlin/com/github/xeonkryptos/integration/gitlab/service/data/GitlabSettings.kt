@@ -21,6 +21,12 @@ data class GitlabSettings(@Volatile @XCollection(propertyElementName = "gitlabHo
         return mutableGitlabHostSettings.any { entry -> entry.value.isModified(gitlabSettings.mutableGitlabHostSettings[entry.key]!!) }
     }
 
+    fun containsGitlabHostSettings(gitlabHost: String): Boolean = mutableGitlabHostSettings.containsKey(gitlabHost)
+
+    fun removeGitlabHostSettings(gitlabHost: String) {
+        mutableGitlabHostSettings.remove(gitlabHost)
+    }
+
     fun hasGitlabAccountBy(filter: (GitlabAccount) -> Boolean): Boolean = getFirstGitlabAccountBy(filter) != null
 
     fun getFirstGitlabAccountBy(filter: (GitlabAccount) -> Boolean): GitlabAccount? = mutableGitlabHostSettings.values.asSequence().flatMap { it.gitlabAccounts }.firstOrNull(filter)

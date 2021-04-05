@@ -65,6 +65,9 @@ data class GitlabHostSettings(@Volatile var gitlabHost: String = "") {
         if (this != gitlabHostSetting || disableSslVerification != gitlabHostSetting.disableSslVerification) return true
         val accounts: List<GitlabAccount> = ArrayList(mutableGitlabAccounts)
         val otherAccounts: List<GitlabAccount> = ArrayList(gitlabHostSetting.mutableGitlabAccounts)
+        if (accounts.size != otherAccounts.size) {
+            return true
+        }
         return accounts.withIndex().any {
             val otherAccount = otherAccounts[it.index]
             return@any it.value.isModified(otherAccount)
