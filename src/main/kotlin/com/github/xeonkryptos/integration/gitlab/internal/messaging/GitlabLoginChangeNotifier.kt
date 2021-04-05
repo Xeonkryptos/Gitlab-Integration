@@ -11,7 +11,7 @@ interface GitlabLoginChangeNotifier {
 
     companion object {
 
-        @JvmStatic
+        @JvmField
         val LOGIN_STATE_CHANGED_TOPIC: Topic<GitlabLoginChangeNotifier> = Topic.create("Changed login state", GitlabLoginChangeNotifier::class.java)
     }
 

@@ -1,9 +1,14 @@
 package com.github.xeonkryptos.integration.gitlab.settings.ui
 
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
+import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabAccountStateNotifier
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabHostSettings
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabSettings
+import com.github.xeonkryptos.integration.gitlab.util.invokeOnDispatchThread
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
+import javax.swing.JComponent
 import javax.swing.table.AbstractTableModel
 
 /**
@@ -14,7 +19,7 @@ import javax.swing.table.AbstractTableModel
  * @author Xeonkryptos
  * @since 16.02.2021
  */
-class GitlabHostsTableModel(private val originalSettings: GitlabSettings) : AbstractTableModel() {
+class GitlabHostsTableModel(componentForModalityState: JComponent, private val originalSettings: GitlabSettings) : AbstractTableModel(), Disposable {
 
     private val currentSettings: GitlabSettings = originalSettings.deepCopy()
 
@@ -22,6 +27,14 @@ class GitlabHostsTableModel(private val originalSettings: GitlabSettings) : Abst
 
     init {
         rebuildFlattenedSettings()
+
+        val applicationManager = ApplicationManager.getApplication()
+        val messageBusConnection = applicationManager.messageBus.connect(this)
+        messageBusConnection.subscribe(GitlabAccountStateNotifier.ACCOUNT_STATE_TOPIC, object : GitlabAccountStateNotifier {
+            override fun onGitlabAccountCreated(gitlabAccount: GitlabAccount): Unit = applicationManager.invokeOnDispatchThread(componentForModalityState) { registerNewGitlabAccount(gitlabAccount) }
+
+            override fun onGitlabAccountDeleted(gitlabAccount: GitlabAccount): Unit = applicationManager.invokeOnDispatchThread(componentForModalityState) { removeGitlabAccount(gitlabAccount) }
+        })
     }
 
     override fun getColumnCount(): Int = 4
@@ -84,13 +97,40 @@ class GitlabHostsTableModel(private val originalSettings: GitlabSettings) : Abst
         }
     }
 
+    private fun registerNewGitlabAccount(createdGitlabAccount: GitlabAccount) {
+        val gitlabHost: String = createdGitlabAccount.getGitlabHost()
+        if (!currentSettings.containsGitlabHostSettings(gitlabHost)) {
+            val currentGitlabHostSettings = currentSettings.getOrCreateGitlabHostSettings(gitlabHost)
+            val originalGitlabHostSetting = originalSettings.gitlabHostSettings[gitlabHost]
+            currentGitlabHostSettings.updateWith(originalGitlabHostSetting!!)
+        } else {
+            val currentGitlabHostSettings = currentSettings.gitlabHostSettings[gitlabHost]
+            val currentGitlabAccount = currentGitlabHostSettings?.createGitlabAccount(createdGitlabAccount.username, true)
+            currentGitlabAccount?.updateWith(createdGitlabAccount)
+        }
+        rebuildFlattenedSettings()
+    }
+
+    private fun removeGitlabAccount(gitlabAccount: GitlabAccount) {
+        val gitlabHost: String = gitlabAccount.getGitlabHost()
+        val currentGitlabHostSettings = currentSettings.gitlabHostSettings[gitlabHost]
+        if (currentGitlabHostSettings != null) {
+            currentGitlabHostSettings.removeGitlabAccount(gitlabAccount, true)
+            flattenedSettings.remove(gitlabAccount)
+            if (currentGitlabHostSettings.gitlabAccounts.isEmpty()) {
+                flattenedSettings.remove(currentGitlabHostSettings)
+            }
+        }
+        fireTableDataChanged()
+    }
+
     fun removeEntry(selectedRow: Int) {
         val removedEntry = flattenedSettings.removeAt(selectedRow)
         var lastDeletedRowIndex: Int = selectedRow
         if (removedEntry is GitlabHostSettings) {
             val size = flattenedSettings.size + 1
 
-            while (flattenedSettings.size > 0 && flattenedSettings[selectedRow] is GitlabAccount) flattenedSettings.removeAt(selectedRow)
+            while (flattenedSettings.size in 1 until selectedRow && flattenedSettings[selectedRow] is GitlabAccount) (flattenedSettings.removeAt(selectedRow) as GitlabAccount).delete()
             currentSettings.removeGitlabHostSettings(removedEntry.gitlabHost)
 
             lastDeletedRowIndex = size - flattenedSettings.size
@@ -124,4 +164,6 @@ class GitlabHostsTableModel(private val originalSettings: GitlabSettings) : Abst
             gitlabHostSettings.gitlabAccounts.forEach { gitlabAccount -> flattenedSettings.add(gitlabAccount) }
         }
     }
+
+    override fun dispose() {}
 }

@@ -11,7 +11,7 @@ interface GitlabAccountStateNotifier {
 
     companion object {
 
-        @JvmStatic
+        @JvmField
         val ACCOUNT_STATE_TOPIC: Topic<GitlabAccountStateNotifier> = Topic.create("Gitlab account state change", GitlabAccountStateNotifier::class.java)
     }
 

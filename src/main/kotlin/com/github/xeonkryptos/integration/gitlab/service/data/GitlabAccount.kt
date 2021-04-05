@@ -41,7 +41,7 @@ data class GitlabAccount(@Volatile var username: String = "") {
         return if (gitlabHost.endsWith("/")) gitlabHost.substring(0, gitlabHost.length - 1) else gitlabHost
     }
 
-    fun setGitlabHostSettingsOwner(gitlabHostSettingsOwner: GitlabHostSettings) {
+    internal fun setGitlabHostSettingsOwner(gitlabHostSettingsOwner: GitlabHostSettings) {
         this.gitlabHostSettingsOwner = gitlabHostSettingsOwner
     }
 

@@ -1,8 +1,11 @@
 package com.github.xeonkryptos.integration.gitlab.settings.ui;
 
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService;
+import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount;
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabSettings;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.AnActionButtonRunnable;
 import com.intellij.ui.BooleanTableCellEditor;
 import com.intellij.ui.BooleanTableCellRenderer;
@@ -18,18 +21,23 @@ import javax.swing.table.TableColumnModel;
  * @author Xeonkryptos
  * @since 15.02.2021
  */
-public class GitlabIntegrationSettingsForm {
+public class GitlabIntegrationSettingsForm implements Disposable {
 
     private final GitlabHostsTableModel gitlabHostsTableModel;
+
+    private final Project project;
 
     private JBTable gitlabHostsTbl;
     private JPanel settingsPanel;
     @SuppressWarnings("unused") private JPanel gitlabTablePanel;
 
     public GitlabIntegrationSettingsForm(Project project) {
+        this.project = project;
         GitlabSettings settings = GitlabSettingsService.getInstance(project).getState();
-        gitlabHostsTableModel = new GitlabHostsTableModel(settings);
+        gitlabHostsTableModel = new GitlabHostsTableModel(settingsPanel, settings);
         gitlabHostsTbl.setModel(gitlabHostsTableModel);
+
+        Disposer.register(this, gitlabHostsTableModel);
     }
 
     public boolean isModified() {
@@ -74,13 +82,18 @@ public class GitlabIntegrationSettingsForm {
         gitlabHostsTbl = new JBTable(null, tableColumnModel);
         gitlabHostsTbl.setShowGrid(false);
 
-        AnActionButtonRunnable onAddAction = anActionButton -> {};
-        AnActionButtonRunnable onEditAction = anActionButton -> {};
+        AnActionButtonRunnable onAddAction = anActionButton -> {
+            AddGitlabSettingsEntryDialog addGitlabSettingsEntryDialog = new AddGitlabSettingsEntryDialog(project);
+            addGitlabSettingsEntryDialog.setVisible(true);
+        };
         AnActionButtonRunnable onRemoveAction = anActionButton -> {
             int selectedRow = gitlabHostsTbl.getSelectedRow();
             gitlabHostsTableModel.removeEntry(selectedRow);
         };
 
-        gitlabTablePanel = ToolbarDecorator.createDecorator(gitlabHostsTbl).setAddAction(onAddAction).setEditAction(onEditAction).setRemoveAction(onRemoveAction).createPanel();
+        gitlabTablePanel = ToolbarDecorator.createDecorator(gitlabHostsTbl).setAddAction(onAddAction).setRemoveAction(onRemoveAction).createPanel();
     }
+
+    @Override
+    public void dispose() {}
 }

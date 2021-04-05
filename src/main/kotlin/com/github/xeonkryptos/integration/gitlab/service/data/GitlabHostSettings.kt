@@ -24,11 +24,13 @@ data class GitlabHostSettings(@Volatile var gitlabHost: String = "") {
     @OptionTag
     var disableSslVerification: Boolean = false
 
-    fun createGitlabAccount(username: String): GitlabAccount {
+    fun createGitlabAccount(username: String, silent: Boolean = false): GitlabAccount {
         val gitlabAccount = GitlabAccount(this, username)
         return if (mutableGitlabAccounts.add(gitlabAccount)) {
-            val publisher = messageBus.syncPublisher(GitlabAccountStateNotifier.ACCOUNT_STATE_TOPIC)
-            publisher.onGitlabAccountCreated(gitlabAccount)
+            if (!silent) {
+                val publisher = messageBus.syncPublisher(GitlabAccountStateNotifier.ACCOUNT_STATE_TOPIC)
+                publisher.onGitlabAccountCreated(gitlabAccount)
+            }
 
             gitlabAccount
         } else {
@@ -36,11 +38,13 @@ data class GitlabHostSettings(@Volatile var gitlabHost: String = "") {
         }
     }
 
-    fun removeGitlabAccount(gitlabAccount: GitlabAccount) {
+    fun removeGitlabAccount(gitlabAccount: GitlabAccount, silent: Boolean = false) {
         mutableGitlabAccounts.remove(gitlabAccount)
 
-        val publisher = messageBus.syncPublisher(GitlabAccountStateNotifier.ACCOUNT_STATE_TOPIC)
-        publisher.onGitlabAccountDeleted(gitlabAccount)
+        if (!silent) {
+            val publisher = messageBus.syncPublisher(GitlabAccountStateNotifier.ACCOUNT_STATE_TOPIC)
+            publisher.onGitlabAccountDeleted(gitlabAccount)
+        }
     }
 
     fun updateWith(gitlabHostSetting: GitlabHostSettings) {

@@ -1,8 +1,10 @@
 package com.github.xeonkryptos.integration.gitlab.settings
 
 import com.github.xeonkryptos.integration.gitlab.settings.ui.GitlabIntegrationSettingsForm
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
 import javax.swing.JComponent
 
 /**
@@ -27,5 +29,9 @@ class GitlabIntegrationSettingsConfigurable(project: Project) : Configurable {
 
     override fun reset() {
         settingsForm.reset()
+    }
+
+    override fun disposeUIResources() {
+        Disposer.dispose(settingsForm)
     }
 }
