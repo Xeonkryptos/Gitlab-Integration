@@ -15,8 +15,9 @@ import javax.swing.tree.TreeNode
  * @author Xeonkryptos
  * @since 11.09.2020
  */
-class NameFilteringTreeModel<T>(private val originModel: TreeModel, private val treeNodeContentExtractor: Function<Any?, T?>, private val filterCondition: Predicate<List<T?>>) : DefaultTreeModel(
-    DefaultMutableTreeNode()) {
+class NameFilteringTreeModel<T>(private val originModel: TreeModel,
+                                private val treeNodeContentExtractor: Function<Any?, T?>,
+                                private val filterCondition: Predicate<List<T?>>) : DefaultTreeModel(DefaultMutableTreeNode()) {
 
     private val listener = object : TreeModelListener {
         override fun treeNodesChanged(e: TreeModelEvent?) {
@@ -42,13 +43,18 @@ class NameFilteringTreeModel<T>(private val originModel: TreeModel, private val 
     }
 
     fun refilter() {
-        TreeTraverseUtil.traverseTree(originModel.root as TreeNode, originModel, { filterLeafNodesStartingAt(it) }, { treeNode ->
-            val treePath = TreePathUtil.pathToTreeNode(treeNode)
-            val convertedNodeElements = treePath.path.map { node -> treeNodeContentExtractor.apply(node) }
-            if (treeNode.isLeaf.and(filterCondition.test(convertedNodeElements).not())) {
-                removeNode(treeNode, root as DefaultMutableTreeNode)
+        val originRootNode = originModel.root as TreeNode
+        if (originRootNode.isLeaf) {
+            (root as DefaultMutableTreeNode).removeAllChildren()
+        } else {
+            TreeTraverseUtil.traverseTree(originRootNode, originModel, { filterLeafNodesStartingAt(it) }) { treeNode ->
+                val treePath = TreePathUtil.pathToTreeNode(treeNode)
+                val convertedNodeElements = treePath.path.map { node -> treeNodeContentExtractor.apply(node) }
+                if (treeNode.isLeaf.and(filterCondition.test(convertedNodeElements).not())) {
+                    removeNode(treeNode, root as DefaultMutableTreeNode)
+                }
             }
-        })
+        }
         nodeStructureChanged(root)
     }
 
@@ -60,12 +66,20 @@ class NameFilteringTreeModel<T>(private val originModel: TreeModel, private val 
         if (filterCondition.test(extractedNodeContents)) {
             extractedNodeContents.forEach { extractedNodeContent ->
                 val matchingNode = findMatchingNode(extractedNodeContent, currentParent)
-                currentParent = if (matchingNode == null) {
-                    val newNode = DefaultMutableTreeNode(extractedNodeContent)
-                    currentParent.add(newNode)
-                    newNode
-                } else {
-                    matchingNode
+
+                currentParent = when (matchingNode.first) {
+                    MatchingNode.IDENTICAL -> matchingNode.second!!
+                    MatchingNode.SAME_PATH_MATCHING -> {
+                        removeNode(leafNodeOrigin, currentParent)
+                        val newNode = DefaultMutableTreeNode(extractedNodeContent)
+                        currentParent.add(newNode)
+                        newNode
+                    }
+                    MatchingNode.NOT_FOUND -> {
+                        val newNode = DefaultMutableTreeNode(extractedNodeContent)
+                        currentParent.add(newNode)
+                        newNode
+                    }
                 }
             }
         } else if (extractedNodeContents.isNotEmpty()) {
@@ -82,8 +96,8 @@ class NameFilteringTreeModel<T>(private val originModel: TreeModel, private val 
                 return@forEach
             }
             val matchingNode = findMatchingNode(extractedNodeContent, currentParent)
-            if (matchingNode != null) {
-                currentParent = matchingNode
+            if (matchingNode.first == MatchingNode.SAME_PATH_MATCHING || matchingNode.first == MatchingNode.IDENTICAL) {
+                currentParent = matchingNode.second!!
             } else {
                 return
             }
@@ -91,17 +105,23 @@ class NameFilteringTreeModel<T>(private val originModel: TreeModel, private val 
         currentParent.removeFromParent()
     }
 
-    private fun findMatchingNode(convertedNodeElement: Any, parent: DefaultMutableTreeNode): DefaultMutableTreeNode? {
+    private fun findMatchingNode(convertedNodeElement: Any, parent: DefaultMutableTreeNode): Pair<MatchingNode, DefaultMutableTreeNode?> {
         for (i in 0 until parent.childCount) {
             val currentChild = parent.getChildAt(i) as DefaultMutableTreeNode
             if (currentChild.userObject == convertedNodeElement) {
-                return currentChild
+                val isIdentical: Boolean = (currentChild.userObject as TreeNodeEntry).gitlabProject == (convertedNodeElement as TreeNodeEntry).gitlabProject
+                return if (isIdentical) Pair(MatchingNode.IDENTICAL, currentChild) else Pair(MatchingNode.SAME_PATH_MATCHING, currentChild)
             }
         }
-        return null
+        return Pair(MatchingNode.NOT_FOUND, null)
     }
 
     fun isNotEmpty() = !isEmpty()
 
     fun isEmpty() = root.isLeaf
+
+    private enum class MatchingNode {
+
+        NOT_FOUND, SAME_PATH_MATCHING, IDENTICAL
+    }
 }

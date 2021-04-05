@@ -39,6 +39,8 @@ import java.util.*
 import javax.swing.ImageIcon
 import javax.swing.JLabel
 import javax.swing.tree.DefaultMutableTreeNode
+import javax.swing.tree.DefaultTreeModel
+import javax.swing.tree.MutableTreeNode
 
 /**
  * @author Xeonkryptos
@@ -124,20 +126,20 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
             }
 
             override fun onGitlabAccountDeleted(gitlabAccount: GitlabAccount) {
-                ApplicationManager.getApplication().invokeOnDispatchThread(ui.repositoryPanel) { removeAccountProject(gitlabAccount) }
+                applicationManager.invokeOnDispatchThread(ui.repositoryPanel) { removeAccountProject(gitlabAccount) }
             }
         })
         connection.subscribe(GitlabLoginChangeNotifier.LOGIN_STATE_CHANGED_TOPIC, object : GitlabLoginChangeNotifier {
             override fun onSignIn(gitlabAccount: GitlabAccount) {
                 if (!authenticationManager.hasAuthenticationTokenFor(gitlabAccount)) {
-                    ApplicationManager.getApplication().invokeOnDispatchThread(ui.repositoryPanel) { removeAccountProject(gitlabAccount) }
+                    applicationManager.invokeOnDispatchThread(ui.repositoryPanel) { removeAccountProject(gitlabAccount) }
                 } else {
                     reloadData(gitlabAccount)
                 }
             }
 
             override fun onSignOut(gitlabAccount: GitlabAccount) {
-                ApplicationManager.getApplication().invokeOnDispatchThread(ui.repositoryPanel) { removeAccountProject(gitlabAccount) }
+                applicationManager.invokeOnDispatchThread(ui.repositoryPanel) { removeAccountProject(gitlabAccount) }
             }
         })
     }
@@ -261,41 +263,19 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
 
     @RequiresEdt
     private fun updateAccountProjects(children: List<DefaultMutableTreeNode>) {
-        (ui?.model?.treeModel?.root as? DefaultMutableTreeNode)?.let { defaultMutableTreeNodeRoot ->
-            defaultMutableTreeNodeRoot.removeAllChildren()
-            children.forEach { defaultMutableTreeNodeRoot.add(it) }
-            repaintTree()
-        }
-    }
-
-    @RequiresEdt
-    private fun removeAccountProject(gitlabAccount: GitlabAccount) {
-        val gitlabTreeNodeName = createGitlabTreeNodeName(gitlabAccount)
-        (ui?.model?.treeModel?.root as? DefaultMutableTreeNode)?.let { rootNode ->
-            val childCount = rootNode.childCount
+        (ui?.model?.treeModel as? DefaultTreeModel)?.let { treeModel ->
+            val root = treeModel.root as MutableTreeNode
+            val childCount = treeModel.getChildCount(root)
             for (i in 0 until childCount) {
-                val childAt = rootNode.getChildAt(i) as DefaultMutableTreeNode
-                val treeNodeEntry = childAt.userObject as TreeNodeEntry
-                if (treeNodeEntry.pathName == gitlabTreeNodeName) {
-                    rootNode.remove(childAt)
-                    break
-                }
+                val child = treeModel.getChild(root, i) as MutableTreeNode
+                treeModel.removeNodeFromParent(child)
             }
+            var modifiableChildCount = 0
+            children.forEach { treeModel.insertNodeInto(it, root, modifiableChildCount++) }
         }
     }
 
-    @RequiresEdt
-    private fun repaintTree() {
-        ui?.let {
-            it.model.reload()
-            it.tree.invalidate()
-
-            it.repositoryPanel.revalidate()
-            it.repositoryPanel.repaint()
-        }
-    }
-
-    @RequiresEdt
+    @RequiresBackgroundThread
     private fun addNodeIntoTree(gitlabProjectPath: String, gitlabProject: GitlabProject, gitlabAccount: GitlabAccount, parents: MutableMap<String, DefaultMutableTreeNode>) {
         val parentName = gitlabProjectPath.substringBeforeLast('/')
         if (!parents.containsKey(parentName) && parentName.contains('/')) {
@@ -315,6 +295,22 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
             }
             parents[parentName]?.add(childNode)
             parents[gitlabProjectPath] = childNode
+        }
+    }
+
+    @RequiresEdt
+    private fun removeAccountProject(gitlabAccount: GitlabAccount) {
+        val gitlabTreeNodeName = createGitlabTreeNodeName(gitlabAccount)
+        (ui?.model?.treeModel?.root as? DefaultMutableTreeNode)?.let { rootNode ->
+            val childCount = rootNode.childCount
+            for (i in 0 until childCount) {
+                val childAt = rootNode.getChildAt(i) as DefaultMutableTreeNode
+                val treeNodeEntry = childAt.userObject as TreeNodeEntry
+                if (treeNodeEntry.pathName == gitlabTreeNodeName) {
+                    rootNode.remove(childAt)
+                    break
+                }
+            }
         }
     }
 
