@@ -177,7 +177,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
         progressIndicator.run(object : Task.Backgroundable(project, "Previous repositories download", true, ALWAYS_BACKGROUND) {
             override fun run(indicator: ProgressIndicator) {
                 val gitlabProjectsMap: Map<GitlabAccount, PagerProxy<List<GitlabProject>>>? = gitlabProjectsMap
-                gitlabProjectsMap?.values?.forEachWithProgress(indicator) { pagerProxy, _ -> pagerProxy.loadPreviousPage() }
+                gitlabProjectsMap?.values?.forEach { pagerProxy -> pagerProxy.loadPreviousPage() }
                 gitlabProjectsMap?.let {
                     val children = computeTreeStructure(it)
                     applicationManager.invokeLater { updateAccountProjects(children) }
@@ -195,7 +195,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
         progressIndicator.run(object : Task.Backgroundable(project, "Next repositories download", true, ALWAYS_BACKGROUND) {
             override fun run(indicator: ProgressIndicator) {
                 val gitlabProjectsMap: Map<GitlabAccount, PagerProxy<List<GitlabProject>>>? = gitlabProjectsMap
-                gitlabProjectsMap?.values?.forEachWithProgress(indicator) { pagerProxy, _ -> pagerProxy.loadNextPage() }
+                gitlabProjectsMap?.values?.forEach { pagerProxy -> pagerProxy.loadNextPage() }
                 gitlabProjectsMap?.let {
                     val children = computeTreeStructure(it)
                     applicationManager.invokeLater { updateAccountProjects(children) }
