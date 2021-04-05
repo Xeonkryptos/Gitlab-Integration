@@ -67,8 +67,10 @@ class CloneRepositoryUI(private val project: Project, userProvider: UserProvider
         searchField = treeWithSearchComponent.searchField
         val treePanel = ToolbarDecorator.createDecorator(tree)
                 .setMoveUpAction { controller.loadPreviousRepositories() }
+                .setMoveUpActionName(GitlabBundle.message("clone.page.previous"))
                 .setMoveUpActionUpdater { controller.hasPreviousRepositories() }
                 .setMoveDownAction { controller.loadNextRepositories() }
+                .setMoveDownActionName(GitlabBundle.message("clone.page.next"))
                 .setMoveDownActionUpdater { controller.hasNextRepositories() }
                 .createPanel()
 
