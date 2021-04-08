@@ -103,8 +103,11 @@ class GitlabApiManager(project: Project) {
                         .path("api/v4/projects")
                         .queryParam("owned", gitlabAccount.resolveOnlyOwnProjects)
                         .queryParam("membership", gitlabAccount.resolveOnlyOwnProjects)
+                        .queryParam("order_by", "path") // not the same as namespace (not every time, but namespace isn't a valid sort option...)
+                        .queryParam("order_by", "name")
                         .queryParam("order_by", "id")
                         .queryParam("simple", true)
+                        .queryParam("sort", "asc") // Default sort is desc
                         .build()
                 token?.let {
                     val pager = Pager(baseUri, it, GITLAB_PROJECTS_GENERIC_TYPE, gitlabClient)
