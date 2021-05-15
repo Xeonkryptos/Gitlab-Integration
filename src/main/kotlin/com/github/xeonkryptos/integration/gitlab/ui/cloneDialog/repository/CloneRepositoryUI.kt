@@ -22,7 +22,6 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.cloneDialog.ListWithSearchComponent
 import git4idea.remote.GitRememberedInputs
 import java.awt.FlowLayout
-import java.util.*
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.function.Consumer
 import javax.swing.JPanel
@@ -36,7 +35,7 @@ class CloneRepositoryUI(private val project: Project, userProvider: UserProvider
 
     private val clonePathListeners = CopyOnWriteArraySet<Consumer<GitlabProject?>>()
 
-    internal val repositoryListModel: CollectionListModelExt<GitlabProjectListItem> = CollectionListModelExt()
+    internal val repositoryModel: DefaultCloneRepositoryUIModel = DefaultCloneRepositoryUIModel()
     internal val repositoryList: JBList<GitlabProjectListItem>
     internal val usersPanel: JPanel = JPanel(FlowLayout(FlowLayout.LEADING, JBUI.scale(1), 0))
     internal val repositoryListPanel: JPanel
@@ -52,7 +51,7 @@ class CloneRepositoryUI(private val project: Project, userProvider: UserProvider
     var controller: CloneRepositoryUIControl = DefaultCloneRepositoryUIControl(project, this, userProvider)
 
     init {
-        val listWithSearchComponent = ListWithSearchComponent(repositoryListModel, GitlabProjectListCellRenderer { controller.getAvailableAccounts() })
+        val listWithSearchComponent = ListWithSearchComponent(repositoryModel, GitlabProjectListCellRenderer { repositoryModel.availableAccounts })
         repositoryList = listWithSearchComponent.list
         repositoryListPanel = CustomListToolbarDecorator(repositoryList, null).initPosition()
             .disableUpAction()

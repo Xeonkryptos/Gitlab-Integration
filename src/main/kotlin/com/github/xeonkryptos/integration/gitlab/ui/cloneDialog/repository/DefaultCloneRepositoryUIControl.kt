@@ -155,6 +155,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
                 }
 
                 gitlabProjectsMap = gitlabApiManager.retrieveGitlabProjectsFor(gitlabAccounts)
+                ui?.repositoryModel?.availableAccounts = gitlabProjectsMap!!.keys
                 applicationManager.invokeLater { updateAccountProjects() }
             }
         })
@@ -218,14 +219,14 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
     @RequiresEdt
     private fun updateAccountProjects() {
         ui?.let { localUI ->
-            localUI.repositoryListModel.removeAll()
+            localUI.repositoryModel.removeAll()
             gitlabProjectsMap?.entries?.mapNotNull { it.value.currentData?.map { gitlabProject -> GitlabProjectListItem(it.key, gitlabProject) } }
-                ?.forEach { pagerData -> ui?.repositoryListModel?.add(pagerData) }
+                ?.forEach { pagerData -> ui?.repositoryModel?.add(pagerData) }
         }
     }
 
     @RequiresEdt
-    private fun removeAccountProject(gitlabAccount: GitlabAccount) = ui?.repositoryListModel?.removeIf { it.gitlabAccount == gitlabAccount }
+    private fun removeAccountProject(gitlabAccount: GitlabAccount) = ui?.repositoryModel?.removeIf { it.gitlabAccount == gitlabAccount }
 
     @RequiresEdt
     override fun updateProjectName(projectName: String?) {
