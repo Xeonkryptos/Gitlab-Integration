@@ -93,22 +93,26 @@ class GitlabApiManager(project: Project) {
         return users
     }
 
-    fun retrieveGitlabProjectsFor(gitlabAccounts: Collection<GitlabAccount>): Map<GitlabAccount, PagerProxy<List<GitlabProject>>> {
+    fun retrieveGitlabProjectsFor(gitlabAccounts: Collection<GitlabAccount>, searchText: String? = null): Map<GitlabAccount, PagerProxy<List<GitlabProject>>> {
         val accountProjects = mutableMapOf<GitlabAccount, PagerProxy<List<GitlabProject>>>()
         gitlabAccounts.filter { authenticationManager.hasAuthenticationTokenFor(it) }.forEach { gitlabAccount ->
             try {
                 val gitlabClient = getGitlabApiClient(gitlabAccount)
                 val token = getToken(gitlabAccount)
-                val baseUri: URI = UriBuilder.fromUri(gitlabAccount.getTargetGitlabHost())
-                        .path("api/v4/projects")
-                        .queryParam("owned", gitlabAccount.resolveOnlyOwnProjects)
-                        .queryParam("membership", gitlabAccount.resolveOnlyOwnProjects)
-                        .queryParam("order_by", "path") // not the same as namespace (not every time, but namespace isn't a valid sort option...)
-                        .queryParam("order_by", "name")
-                        .queryParam("order_by", "id")
-                        .queryParam("simple", true)
-                        .queryParam("sort", "asc") // Default sort is desc
-                        .build()
+                var baseUriBuilder: UriBuilder = UriBuilder.fromUri(gitlabAccount.getTargetGitlabHost())
+                    .path("api/v4/projects")
+                    .queryParam("owned", gitlabAccount.resolveOnlyOwnProjects)
+                    .queryParam("membership", gitlabAccount.resolveOnlyOwnProjects)
+                    .queryParam("order_by", "path") // not the same as namespace (not every time, but namespace isn't a valid sort option...)
+                    .queryParam("order_by", "name")
+                    .queryParam("order_by", "id")
+                    .queryParam("simple", true)
+                    .queryParam("sort", "asc") // Default sort is desc
+
+                if (searchText != null && searchText.isNotBlank()) {
+                    baseUriBuilder = baseUriBuilder.queryParam("search", searchText)
+                }
+                val baseUri = baseUriBuilder.build()
                 token?.let {
                     val pager = Pager(baseUri, it, GITLAB_PROJECTS_GENERIC_TYPE, gitlabClient)
                     val pagerProxy = PagerProxy(pager)

@@ -11,6 +11,12 @@ import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabLoginC
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
+import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEvent
+import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEventListener
+import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.PagingEvent
+import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.PagingEventListener
+import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ReloadDataEvent
+import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ReloadDataEventListener
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.github.xeonkryptos.integration.gitlab.util.invokeOnDispatchThread
 import com.intellij.icons.AllIcons
@@ -20,7 +26,8 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.Disposer
+import com.intellij.ui.DocumentAdapter
+import com.intellij.ui.KeyStrokeAdapter
 import com.intellij.util.ImageLoader
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.progress.ProgressVisibilityManager
@@ -30,17 +37,18 @@ import com.intellij.util.ui.cloneDialog.AccountMenuPopupStep
 import com.intellij.util.ui.cloneDialog.AccountsMenuListPopup
 import com.intellij.util.ui.cloneDialog.VcsCloneDialogUiSpec
 import com.jetbrains.rd.util.firstOrNull
+import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
-import java.util.*
 import javax.swing.ImageIcon
 import javax.swing.JLabel
+import javax.swing.event.DocumentEvent
 
 /**
  * @author Xeonkryptos
  * @since 20.02.2021
  */
-class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRepositoryUI? = null, private val userProvider: UserProvider) : CloneRepositoryUIControl {
+class DefaultCloneRepositoryUIControl(private val project: Project, val ui: CloneRepositoryUI, private val userProvider: UserProvider) : CloneRepositoryUIControl {
 
     private val applicationManager = ApplicationManager.getApplication()
 
@@ -51,11 +59,13 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
     @Volatile
     private var gitlabProjectsMap: Map<GitlabAccount, PagerProxy<List<GitlabProject>>>? = null
 
+    private var filtered: Boolean = false
+
     private val progressIndicator: ProgressVisibilityManager = object : ProgressVisibilityManager() {
         override fun getModalityState(): ModalityState = ModalityState.any()
 
         override fun setProgressVisible(visible: Boolean) {
-            this@DefaultCloneRepositoryUIControl.ui?.repositoryList?.setPaintBusy(visible)
+            this@DefaultCloneRepositoryUIControl.ui.listWithSearchComponent.list.setPaintBusy(visible)
         }
     }
 
@@ -63,26 +73,53 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
         override fun mouseClicked(e: MouseEvent?) = showPopupMenu()
     }
 
-    override var ui: CloneRepositoryUI? = ui
-        set(value) {
-            field?.let {
-                it.usersPanel.removeMouseListener(popupMenuMouseAdapter)
-                if (it !== value) {
-                    Disposer.dispose(it)
+    override fun registerBehaviourListeners() {
+        ui.usersPanel.addMouseListener(popupMenuMouseAdapter)
+        initMessageListening(ui)
+        ui.listWithSearchComponent.searchField.addKeyboardListener(object : KeyStrokeAdapter() {
+            override fun keyTyped(event: KeyEvent?) {
+                if (event?.isControlDown == true && event.keyChar == KeyEvent.VK_ENTER.toChar()) {
+                    doGlobalSearch(null)
                 }
             }
-            field = value
-            field?.let {
-                it.usersPanel.addMouseListener(popupMenuMouseAdapter)
-                initMessageListening(it)
+        })
+        ui.listWithSearchComponent.searchField.addDocumentListener(object : DocumentAdapter() {
+            override fun textChanged(e: DocumentEvent) {
+                val searchText: String? = ui.listWithSearchComponent.searchField.text
+                if ((searchText == null || searchText.isBlank()) && filtered) {
+                    doGlobalSearch(null)
+                }
             }
-        }
+        })
+        ui.globalSearchButton.addActionListener { doGlobalSearch(ui.listWithSearchComponent.searchField.text) }
+        ui.addReloadDataEventListener(object : ReloadDataEventListener {
+            override fun onReloadRequest(event: ReloadDataEvent) {
+                reloadData()
+            }
+        })
+        ui.addClonePathEventListener(object : ClonePathEventListener {
+            override fun onClonePathChanged(event: ClonePathEvent) {
+                ui.directoryField.trySetChildPath(event.gitlabProject?.viewableProjectPath?.substringAfterLast("/") ?: "")
+            }
+        })
+        ui.addPagingEventListener(object : PagingEventListener {
+            override fun onPreviousPage(event: PagingEvent) {
+                loadPreviousRepositories()
+            }
+
+            override fun onNextPage(event: PagingEvent) {
+                loadNextRepositories()
+            }
+        })
+    }
 
     private fun showPopupMenu() {
         val menuItems = mutableListOf<AccountMenuItem>()
 
         for ((index, userEntry) in userProvider.getUsers().entries.withIndex()) {
             val accountTitle = userEntry.value.name
+
+            @Suppress("HttpUrlsUsage")
             val serverInfo = userEntry.value.server.removePrefix("http://").removePrefix("https://")
             val avatar = ImageIcon(userEntry.value.avatar ?: ImageLoader.loadFromResource(GitlabUtil.GITLAB_ICON_PATH, javaClass))
             val accountActions = mutableListOf<AccountMenuItem.Action>()
@@ -109,7 +146,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
             menuItems += AccountMenuItem.Account(accountTitle, serverInfo, avatar, accountActions, showSeparatorAbove)
         } // TODO: Add actions to login into a new account
 
-        AccountsMenuListPopup(project, AccountMenuPopupStep(menuItems)).showUnderneathOf(ui!!.usersPanel)
+        AccountsMenuListPopup(project, AccountMenuPopupStep(menuItems)).showUnderneathOf(ui.usersPanel)
     }
 
     private fun initMessageListening(ui: CloneRepositoryUI) {
@@ -140,98 +177,111 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
         })
     }
 
-    override fun reloadData(gitlabAccount: GitlabAccount?) {
+    fun reloadData(gitlabAccount: GitlabAccount? = null) { // TODO: Implement feature to reload data only for a provided account
+        filtered = false
         progressIndicator.run(object : Task.Backgroundable(project, "Repositories download", true, ALWAYS_BACKGROUND) {
 
             override fun run(indicator: ProgressIndicator) {
-                val gitlabAccounts: List<GitlabAccount> = gitlabSettings.getAllGitlabAccountsBy { authenticationManager.hasAuthenticationTokenFor(it) }
-                val gitlabUsersMap = gitlabApiManager.retrieveGitlabUsersFor(gitlabAccounts)
+                val gitlabAccounts = loadAccounts()
+                val localGitlabProjectsMap = gitlabApiManager.retrieveGitlabProjectsFor(gitlabAccounts)
+                gitlabProjectsMap = localGitlabProjectsMap
+                updatePagingPointers(localGitlabProjectsMap.values)
 
-                applicationManager.invokeLater {
-                    val firstUserEntry = gitlabUsersMap.firstOrNull()
-                    if (firstUserEntry != null) {
-                        addUserAccount(firstUserEntry.value)
-                    }
-                }
-
-                gitlabProjectsMap = gitlabApiManager.retrieveGitlabProjectsFor(gitlabAccounts)
-                ui?.repositoryModel?.availableAccounts = gitlabProjectsMap!!.keys
+                ui.repositoryModel.availableAccounts = gitlabAccounts
                 applicationManager.invokeLater { updateAccountProjects() }
             }
         })
     }
 
-    override fun hasPreviousRepositories(): Boolean {
-        // Technically all have a previous page reference, not just one. It gets stream-lined by PagerProxy. For performance we're sticking to any
-        return gitlabProjectsMap?.values?.any { it.hasPreviousPage() } ?: false;
+    private fun doGlobalSearch(globalSearchText: String?) {
+        filtered = globalSearchText != null && globalSearchText.isNotBlank()
+        progressIndicator.run(object : Task.Backgroundable(project, "Filtered repositories download", true, ALWAYS_BACKGROUND) {
+
+            override fun run(indicator: ProgressIndicator) {
+                val gitlabAccounts: Collection<GitlabAccount> = gitlabProjectsMap?.keys ?: loadAccounts()
+                val localGitlabProjectsMap = gitlabApiManager.retrieveGitlabProjectsFor(gitlabAccounts, globalSearchText)
+                gitlabProjectsMap = localGitlabProjectsMap
+                updatePagingPointers(localGitlabProjectsMap.values)
+
+                ui.repositoryModel.availableAccounts = gitlabAccounts
+                applicationManager.invokeLater { updateAccountProjects() }
+            }
+        })
     }
 
-    override fun loadPreviousRepositories() {
+    private fun loadAccounts(): List<GitlabAccount> {
+        val gitlabAccounts: List<GitlabAccount> = gitlabSettings.getAllGitlabAccountsBy { authenticationManager.hasAuthenticationTokenFor(it) }
+        val gitlabUsersMap = gitlabApiManager.retrieveGitlabUsersFor(gitlabAccounts)
+
+        applicationManager.invokeLater {
+            val firstUserEntry = gitlabUsersMap.firstOrNull()
+            if (firstUserEntry != null) {
+                addUserAccount(firstUserEntry.value)
+            }
+        }
+        return gitlabAccounts
+    }
+
+    private fun loadPreviousRepositories() {
         progressIndicator.run(object : Task.Backgroundable(project, "Previous repositories download", true, ALWAYS_BACKGROUND) {
             override fun run(indicator: ProgressIndicator) {
                 gitlabProjectsMap?.let {
                     it.values.forEach { pagerProxy -> pagerProxy.loadPreviousPage() }
+                    updatePagingPointers(it.values)
                     applicationManager.invokeLater { updateAccountProjects() }
                 }
             }
         })
     }
 
-    override fun hasNextRepositories(): Boolean = gitlabProjectsMap?.values?.any { it.hasNextPage() } ?: false
-
-    override fun loadNextRepositories() {
+    private fun loadNextRepositories() {
         progressIndicator.run(object : Task.Backgroundable(project, "Next repositories download", true, ALWAYS_BACKGROUND) {
             override fun run(indicator: ProgressIndicator) {
                 gitlabProjectsMap?.let {
                     it.values.forEach { pagerProxy -> pagerProxy.loadNextPage() }
+                    updatePagingPointers(it.values)
                     applicationManager.invokeLater { updateAccountProjects() }
                 }
             }
         })
     }
 
+    private fun updatePagingPointers(pagerProxies: Collection<PagerProxy<List<GitlabProject>>>) {
+        ui.repositoryModel.hasPreviousRepositories = pagerProxies.any { pager -> pager.hasPreviousPage() }
+        ui.repositoryModel.hasNextRepositories = pagerProxies.any { pager -> pager.hasNextPage() }
+    }
+
     @RequiresEdt
     private fun addUserAccount(gitlabUser: GitlabUser?) {
-        ui?.let {
-            if (it.usersPanel.components.isEmpty()) {
-                var avatar = gitlabUser?.avatar
-                avatar = if (avatar != null) {
-                    ImageUtil.scaleImage(avatar, VcsCloneDialogUiSpec.Components.avatarSize, VcsCloneDialogUiSpec.Components.avatarSize)
-                } else {
-                    val defaultAvatarImage = ImageLoader.loadFromResource(GitlabUtil.GITLAB_ICON_PATH, javaClass)
-                    ImageUtil.scaleImage(defaultAvatarImage, VcsCloneDialogUiSpec.Components.avatarSize, VcsCloneDialogUiSpec.Components.avatarSize)
-                }
-                val userLabel = JLabel().apply {
-                    icon = ImageIcon(avatar)
-                    toolTipText = gitlabUser?.username
-                    isOpaque = false
-                    addMouseListener(popupMenuMouseAdapter)
-                }
-                it.usersPanel.add(userLabel)
-                it.usersPanel.invalidate()
-
-                it.repositoryPanel.revalidate()
-                it.repositoryPanel.repaint()
+        if (ui.usersPanel.components.isEmpty()) {
+            var avatar = gitlabUser?.avatar
+            avatar = if (avatar != null) {
+                ImageUtil.scaleImage(avatar, VcsCloneDialogUiSpec.Components.avatarSize, VcsCloneDialogUiSpec.Components.avatarSize)
+            } else {
+                val defaultAvatarImage = ImageLoader.loadFromResource(GitlabUtil.GITLAB_ICON_PATH, javaClass)
+                ImageUtil.scaleImage(defaultAvatarImage, VcsCloneDialogUiSpec.Components.avatarSize, VcsCloneDialogUiSpec.Components.avatarSize)
             }
+            val userLabel = JLabel().apply {
+                icon = ImageIcon(avatar)
+                toolTipText = gitlabUser?.username
+                isOpaque = false
+                addMouseListener(popupMenuMouseAdapter)
+            }
+            ui.usersPanel.add(userLabel)
+            ui.usersPanel.invalidate()
+
+            ui.repositoryPanel.revalidate()
+            ui.repositoryPanel.repaint()
         }
     }
 
     @RequiresEdt
     private fun updateAccountProjects() {
-        ui?.let { localUI ->
-            localUI.repositoryModel.removeAll()
-            gitlabProjectsMap?.entries?.mapNotNull { it.value.currentData?.map { gitlabProject -> GitlabProjectListItem(it.key, gitlabProject) } }
-                ?.forEach { pagerData -> ui?.repositoryModel?.add(pagerData) }
-        }
+        ui.repositoryModel.removeAll()
+        gitlabProjectsMap?.entries?.mapNotNull { it.value.currentData?.map { gitlabProject -> GitlabProjectListItem(it.key, gitlabProject) } }
+            ?.forEach { pagerData -> ui.repositoryModel.add(pagerData) }
     }
 
     @RequiresEdt
-    private fun removeAccountProject(gitlabAccount: GitlabAccount) = ui?.repositoryModel?.removeIf { it.gitlabAccount == gitlabAccount }
-
-    @RequiresEdt
-    override fun updateProjectName(projectName: String?) {
-        ui?.directoryField?.trySetChildPath(projectName ?: "")
-    }
-
-    override fun getAvailableAccounts(): Collection<GitlabAccount> = gitlabProjectsMap?.keys ?: Collections.emptyList()
+    private fun removeAccountProject(gitlabAccount: GitlabAccount) = ui.repositoryModel.removeIf { it.gitlabAccount == gitlabAccount }
 }

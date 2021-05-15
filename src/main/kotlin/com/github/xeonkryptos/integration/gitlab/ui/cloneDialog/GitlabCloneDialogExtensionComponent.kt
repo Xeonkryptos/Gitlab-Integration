@@ -10,6 +10,9 @@ import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.CloneRepositoryUI
+import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEvent
+import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEventListener
+import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ReloadDataEvent
 import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.github.xeonkryptos.integration.gitlab.util.invokeOnDispatchThread
@@ -57,20 +60,16 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
 
     private val cloneRepositoryUI: CloneRepositoryUI by lazy {
         CloneRepositoryUI(project, GitlabUserProvider(gitlabApiManager, gitlabSettings)).apply {
-            addClonePathListener { newGitlabProject ->
-                gitlabProject = newGitlabProject
-                controller.updateProjectName(cloneProjectName)
-                dialogStateListener.onOkActionEnabled(gitlabProject != null)
-            }
+            addClonePathEventListener(object : ClonePathEventListener {
+                override fun onClonePathChanged(event: ClonePathEvent) {
+                    gitlabProject = event.gitlabProject
+                    dialogStateListener.onOkActionEnabled(gitlabProject != null)
+                }
+            })
         }
     }
 
     private var gitlabProject: GitlabProject? = null
-        set(value) {
-            cloneProjectName = value?.viewableProjectPath?.substringAfterLast('/')
-            field = value
-        }
-    private var cloneProjectName: String? = null
 
     private val tokenLoginUI = TokenLoginUI(project, gitlabApiManager)
 
@@ -83,7 +82,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         if (!hasSignedInAccounts) {
             wrapper.setContent(tokenLoginUI.tokenLoginPanel)
         } else {
-            cloneRepositoryUI.reloadData()
+            cloneRepositoryUI.fireReloadDataEvent(ReloadDataEvent(this))
             wrapper.setContent(cloneRepositoryUI.repositoryPanel)
         }
     }

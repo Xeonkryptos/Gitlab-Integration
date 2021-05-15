@@ -6,4 +6,6 @@ import javax.swing.ListModel
 interface CloneRepositoryUIModel : ListModel<GitlabProjectListItem> {
 
     var availableAccounts: Collection<GitlabAccount>
+    var hasPreviousRepositories: Boolean
+    var hasNextRepositories: Boolean
 }

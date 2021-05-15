@@ -7,4 +7,9 @@ class DefaultCloneRepositoryUIModel : CloneRepositoryUIModel, CollectionListMode
 
     @Volatile
     override var availableAccounts: Collection<GitlabAccount> = Collections.emptyList()
+
+    @Volatile
+    override var hasPreviousRepositories: Boolean = false
+    @Volatile
+    override var hasNextRepositories: Boolean = false
 }
