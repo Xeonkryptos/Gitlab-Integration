@@ -13,6 +13,8 @@ import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEvent
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEventListener
+import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.GlobalSearchTextEvent
+import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.GlobalSearchTextEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.PagingEvent
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.PagingEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ReloadDataEvent
@@ -76,22 +78,15 @@ class DefaultCloneRepositoryUIControl(private val project: Project, val ui: Clon
     override fun registerBehaviourListeners() {
         ui.usersPanel.addMouseListener(popupMenuMouseAdapter)
         initMessageListening(ui)
-        ui.listWithSearchComponent.searchField.addKeyboardListener(object : KeyStrokeAdapter() {
-            override fun keyTyped(event: KeyEvent?) {
-                if (event?.isControlDown == true && event.keyChar == KeyEvent.VK_ENTER.toChar()) {
-                    doGlobalSearch(null)
-                }
+        ui.addGlobalSearchTextEventListener(object : GlobalSearchTextEventListener {
+            override fun onGlobalSearchTextChanged(event: GlobalSearchTextEvent) {
+                doGlobalSearch(event.globalSearchText)
+            }
+
+            override fun onGlobalSearchTextDeleted(event: GlobalSearchTextEvent) {
+                if (filtered) doGlobalSearch(null)
             }
         })
-        ui.listWithSearchComponent.searchField.addDocumentListener(object : DocumentAdapter() {
-            override fun textChanged(e: DocumentEvent) {
-                val searchText: String? = ui.listWithSearchComponent.searchField.text
-                if ((searchText == null || searchText.isBlank()) && filtered) {
-                    doGlobalSearch(null)
-                }
-            }
-        })
-        ui.globalSearchButton.addActionListener { doGlobalSearch(ui.listWithSearchComponent.searchField.text) }
         ui.addReloadDataEventListener(object : ReloadDataEventListener {
             override fun onReloadRequest(event: ReloadDataEvent) {
                 reloadData()

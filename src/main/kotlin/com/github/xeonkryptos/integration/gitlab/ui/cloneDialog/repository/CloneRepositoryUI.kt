@@ -4,6 +4,8 @@ import com.github.xeonkryptos.integration.gitlab.api.UserProvider
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEvent
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEventListener
+import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.GlobalSearchTextEvent
+import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.GlobalSearchTextEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.PagingEvent
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.PagingEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ReloadDataEvent
@@ -20,6 +22,7 @@ import com.intellij.ui.AnActionButton
 import com.intellij.ui.CommonActionsPanel
 import com.intellij.ui.CommonActionsPanel.Buttons
 import com.intellij.ui.DocumentAdapter
+import com.intellij.ui.KeyStrokeAdapter
 import com.intellij.ui.layout.ComponentPredicate
 import com.intellij.ui.layout.LCFlags
 import com.intellij.ui.layout.panel
@@ -28,7 +31,7 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.cloneDialog.ListWithSearchComponent
 import git4idea.remote.GitRememberedInputs
 import java.awt.FlowLayout
-import javax.swing.JButton
+import java.awt.event.KeyEvent
 import javax.swing.JPanel
 import javax.swing.JSeparator
 import javax.swing.event.DocumentEvent
@@ -44,7 +47,22 @@ class CloneRepositoryUI(private val project: Project, userProvider: UserProvider
 
     internal val repositoryModel: DefaultCloneRepositoryUIModel = DefaultCloneRepositoryUIModel()
     internal val usersPanel: JPanel = JPanel(FlowLayout(FlowLayout.LEADING, JBUI.scale(1), 0))
-    internal val listWithSearchComponent: ListWithSearchComponent<GitlabProjectListItem> = ListWithSearchComponent(repositoryModel, GitlabProjectListCellRenderer { repositoryModel.availableAccounts })
+    internal val listWithSearchComponent: ListWithSearchComponent<GitlabProjectListItem> =
+        ListWithSearchComponent(repositoryModel, GitlabProjectListCellRenderer { repositoryModel.availableAccounts }).apply {
+            list.selectionModel.addListSelectionListener {
+                val selectedProject = list.selectedValue?.gitlabProject
+                val clonePathEvent = ClonePathEvent(this, selectedProject)
+                fireClonePathChangedEvent(clonePathEvent)
+            }
+            searchField.addKeyboardListener(object : KeyStrokeAdapter() {
+                override fun keyTyped(event: KeyEvent?) {
+                    if (event?.isControlDown == true && event.keyChar == KeyEvent.VK_ENTER.toChar()) {
+                        val globalSearchTextEvent = GlobalSearchTextEvent(this, searchField.text)
+                        fireGlobalSearchTextChanged(globalSearchTextEvent)
+                    }
+                }
+            })
+        }
     private val repositoryListPanel: JPanel by lazy {
         CustomListToolbarDecorator(listWithSearchComponent.list, null).initPosition()
             .disableUpAction()
@@ -55,7 +73,6 @@ class CloneRepositoryUI(private val project: Project, userProvider: UserProvider
             .addExtraAction(NextActionButton())
             .createPanel()
     }
-    internal val globalSearchButton: JButton = JButton(GitlabBundle.message("button.globalSearch"))
 
     val directoryField = SelectChildTextFieldWithBrowseButton(ClonePathProvider.defaultParentDirectoryPath(project, GitRememberedInputs.getInstance())).apply {
         val fcd = FileChooserDescriptorFactory.createSingleFolderDescriptor()
@@ -72,11 +89,19 @@ class CloneRepositoryUI(private val project: Project, userProvider: UserProvider
             row {
                 cell(isFullWidth = true) {
                     listWithSearchComponent.searchField(growX, pushX)
-                    globalSearchButton().enableIf(object : ComponentPredicate() {
+                    button(GitlabBundle.message("button.globalSearch")) {}.enableIf(object : ComponentPredicate() {
                         override fun addListener(listener: (Boolean) -> Unit) {
                             listWithSearchComponent.searchField.addDocumentListener(object : DocumentAdapter() {
                                 override fun textChanged(e: DocumentEvent) {
                                     listener.invoke(invoke())
+
+                                    val searchText: String? = listWithSearchComponent.searchField.text
+                                    val globalSearchTextEvent = GlobalSearchTextEvent(this, searchText)
+                                    if (searchText?.isNotBlank() == true) {
+                                        fireGlobalSearchTextChanged(globalSearchTextEvent)
+                                    } else {
+                                        fireGlobalSearchTextDeleted(globalSearchTextEvent)
+                                    }
                                 }
                             })
                         }
@@ -95,45 +120,35 @@ class CloneRepositoryUI(private val project: Project, userProvider: UserProvider
 
     override fun dispose() {}
 
-    fun fireReloadDataEvent(event: ReloadDataEvent) {
-        eventListeners.getListeners(ReloadDataEventListener::class.java).forEach { listener -> listener.onReloadRequest(event) }
-    }
+    fun fireReloadDataEvent(event: ReloadDataEvent) = eventListeners.getListeners(ReloadDataEventListener::class.java).forEach { listener -> listener.onReloadRequest(event) }
 
-    fun addReloadDataEventListener(listener: ReloadDataEventListener) {
-        eventListeners.add(ReloadDataEventListener::class.java, listener)
-    }
+    fun addReloadDataEventListener(listener: ReloadDataEventListener) = eventListeners.add(ReloadDataEventListener::class.java, listener)
 
-    fun removeReloadDataEventListener(listener: ReloadDataEventListener) {
-        eventListeners.remove(ReloadDataEventListener::class.java, listener)
-    }
+    fun removeReloadDataEventListener(listener: ReloadDataEventListener) = eventListeners.remove(ReloadDataEventListener::class.java, listener)
 
-    fun fireClonePathChangedEvent(event: ClonePathEvent) {
-        eventListeners.getListeners(ClonePathEventListener::class.java).forEach { listener -> listener.onClonePathChanged(event) }
-    }
+    fun fireClonePathChangedEvent(event: ClonePathEvent) = eventListeners.getListeners(ClonePathEventListener::class.java).forEach { listener -> listener.onClonePathChanged(event) }
 
-    fun addClonePathEventListener(listener: ClonePathEventListener) {
-        eventListeners.add(ClonePathEventListener::class.java, listener)
-    }
+    fun addClonePathEventListener(listener: ClonePathEventListener) = eventListeners.add(ClonePathEventListener::class.java, listener)
 
-    fun removeClonePathEventListener(listener: ClonePathEventListener) {
-        eventListeners.remove(ClonePathEventListener::class.java, listener)
-    }
+    fun removeClonePathEventListener(listener: ClonePathEventListener) = eventListeners.remove(ClonePathEventListener::class.java, listener)
 
-    fun fireOnPreviousPagingEvent(event: PagingEvent) {
-        eventListeners.getListeners(PagingEventListener::class.java).forEach { listener -> listener.onPreviousPage(event) }
-    }
+    fun fireOnPreviousPagingEvent(event: PagingEvent) = eventListeners.getListeners(PagingEventListener::class.java).forEach { listener -> listener.onPreviousPage(event) }
 
-    fun fireOnNextPagingEvent(event: PagingEvent) {
-        eventListeners.getListeners(PagingEventListener::class.java).forEach { listener -> listener.onNextPage(event) }
-    }
+    fun fireOnNextPagingEvent(event: PagingEvent) = eventListeners.getListeners(PagingEventListener::class.java).forEach { listener -> listener.onNextPage(event) }
 
-    fun addPagingEventListener(listener: PagingEventListener) {
-        eventListeners.add(PagingEventListener::class.java, listener)
-    }
+    fun addPagingEventListener(listener: PagingEventListener) = eventListeners.add(PagingEventListener::class.java, listener)
 
-    fun removePagingEventListener(listener: PagingEventListener) {
-        eventListeners.remove(PagingEventListener::class.java, listener)
-    }
+    fun removePagingEventListener(listener: PagingEventListener) = eventListeners.remove(PagingEventListener::class.java, listener)
+
+    fun fireGlobalSearchTextChanged(event: GlobalSearchTextEvent) =
+        eventListeners.getListeners(GlobalSearchTextEventListener::class.java).forEach { listener -> listener.onGlobalSearchTextChanged(event) }
+
+    fun fireGlobalSearchTextDeleted(event: GlobalSearchTextEvent) =
+        eventListeners.getListeners(GlobalSearchTextEventListener::class.java).forEach { listener -> listener.onGlobalSearchTextDeleted(event) }
+
+    fun addGlobalSearchTextEventListener(listener: GlobalSearchTextEventListener) = eventListeners.add(GlobalSearchTextEventListener::class.java, listener)
+
+    fun removeGlobalSearchTextEventListener(listener: GlobalSearchTextEventListener) = eventListeners.remove(GlobalSearchTextEventListener::class.java, listener)
 
     interface ExtraActionButton {
         fun verifyUpdateState()
