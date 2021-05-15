@@ -9,6 +9,7 @@ import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabLoginC
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
+import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.CloneRepositoryUI
 import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.github.xeonkryptos.integration.gitlab.util.invokeOnDispatchThread

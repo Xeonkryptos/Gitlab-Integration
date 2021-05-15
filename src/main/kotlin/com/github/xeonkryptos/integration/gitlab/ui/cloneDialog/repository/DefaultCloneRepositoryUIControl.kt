@@ -1,4 +1,4 @@
-package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
+package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository
 
 import com.github.xeonkryptos.integration.gitlab.api.GitlabApiManager
 import com.github.xeonkryptos.integration.gitlab.api.PagerProxy
@@ -11,7 +11,6 @@ import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabLoginC
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
-import com.github.xeonkryptos.integration.gitlab.ui.component.TreeNodeEntry
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.github.xeonkryptos.integration.gitlab.util.invokeOnDispatchThread
 import com.intellij.icons.AllIcons
@@ -20,11 +19,9 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
-import com.intellij.openapi.progress.forEachWithProgress
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.ImageLoader
-import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.progress.ProgressVisibilityManager
 import com.intellij.util.ui.ImageUtil
@@ -38,9 +35,6 @@ import java.awt.event.MouseEvent
 import java.util.*
 import javax.swing.ImageIcon
 import javax.swing.JLabel
-import javax.swing.tree.DefaultMutableTreeNode
-import javax.swing.tree.DefaultTreeModel
-import javax.swing.tree.MutableTreeNode
 
 /**
  * @author Xeonkryptos
@@ -61,7 +55,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
         override fun getModalityState(): ModalityState = ModalityState.any()
 
         override fun setProgressVisible(visible: Boolean) {
-            this@DefaultCloneRepositoryUIControl.ui?.tree?.setPaintBusy(visible)
+            this@DefaultCloneRepositoryUIControl.ui?.repositoryList?.setPaintBusy(visible)
         }
     }
 
@@ -97,10 +91,12 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
             accountActions += AccountMenuItem.Action(GitlabBundle.message("open.on.gitlab.action"), { BrowserUtil.browse(userEntry.value.server) }, AllIcons.Ide.External_link_arrow)
             val signedIn: Boolean = authenticationManager.hasAuthenticationTokenFor(userEntry.key)
             if (!signedIn) {
-                accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.log.in"),
-                                                         { // TODO: Make it possible to re-enter token. Keep in mind: A token is user-specific and a token for another account might be added. Thus, results in another account!
-                                                         },
-                                                         showSeparatorAbove = true)
+                accountActions += AccountMenuItem.Action(
+                    GitlabBundle.message("accounts.log.in"),
+                    { // TODO: Make it possible to re-enter token. Keep in mind: A token is user-specific and a token for another account might be added. Thus, results in another account!
+                    },
+                    showSeparatorAbove = true
+                )
             }
             accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.log.out"), {
                 authenticationManager.deleteAuthenticationFor(userEntry.key)
@@ -158,47 +154,36 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
                     }
                 }
 
-                val gitlabProjectsMap = gitlabApiManager.retrieveGitlabProjectsFor(gitlabAccounts)
-                val children = computeTreeStructure(gitlabProjectsMap)
-                applicationManager.invokeLater {
-                    updateAccountProjects(children)
-                    ui?.expandEntireTree()
-                }
+                gitlabProjectsMap = gitlabApiManager.retrieveGitlabProjectsFor(gitlabAccounts)
+                applicationManager.invokeLater { updateAccountProjects() }
             }
         })
     }
 
     override fun hasPreviousRepositories(): Boolean {
-        val gitlabProjectsMap: Map<GitlabAccount, PagerProxy<List<GitlabProject>>>? = gitlabProjectsMap
-        return gitlabProjectsMap?.values?.any { it.hasPreviousPage() } ?: false // Technically all have a previous page reference, not just one. It gets stream-lined by PagerProxy. For performance we're sticking to any
+        // Technically all have a previous page reference, not just one. It gets stream-lined by PagerProxy. For performance we're sticking to any
+        return gitlabProjectsMap?.values?.any { it.hasPreviousPage() } ?: false;
     }
 
     override fun loadPreviousRepositories() {
         progressIndicator.run(object : Task.Backgroundable(project, "Previous repositories download", true, ALWAYS_BACKGROUND) {
             override fun run(indicator: ProgressIndicator) {
-                val gitlabProjectsMap: Map<GitlabAccount, PagerProxy<List<GitlabProject>>>? = gitlabProjectsMap
-                gitlabProjectsMap?.values?.forEach { pagerProxy -> pagerProxy.loadPreviousPage() }
                 gitlabProjectsMap?.let {
-                    val children = computeTreeStructure(it)
-                    applicationManager.invokeLater { updateAccountProjects(children) }
+                    it.values.forEach { pagerProxy -> pagerProxy.loadPreviousPage() }
+                    applicationManager.invokeLater { updateAccountProjects() }
                 }
             }
         })
     }
 
-    override fun hasNextRepositories(): Boolean {
-        val gitlabProjectsMap: Map<GitlabAccount, PagerProxy<List<GitlabProject>>>? = gitlabProjectsMap
-        return gitlabProjectsMap?.values?.any { it.hasNextPage() } ?: false
-    }
+    override fun hasNextRepositories(): Boolean = gitlabProjectsMap?.values?.any { it.hasNextPage() } ?: false
 
     override fun loadNextRepositories() {
         progressIndicator.run(object : Task.Backgroundable(project, "Next repositories download", true, ALWAYS_BACKGROUND) {
             override fun run(indicator: ProgressIndicator) {
-                val gitlabProjectsMap: Map<GitlabAccount, PagerProxy<List<GitlabProject>>>? = gitlabProjectsMap
-                gitlabProjectsMap?.values?.forEach { pagerProxy -> pagerProxy.loadNextPage() }
                 gitlabProjectsMap?.let {
-                    val children = computeTreeStructure(it)
-                    applicationManager.invokeLater { updateAccountProjects(children) }
+                    it.values.forEach { pagerProxy -> pagerProxy.loadNextPage() }
+                    applicationManager.invokeLater { updateAccountProjects() }
                 }
             }
         })
@@ -230,94 +215,22 @@ class DefaultCloneRepositoryUIControl(private val project: Project, ui: CloneRep
         }
     }
 
-    @RequiresBackgroundThread
-    private fun computeTreeStructure(accountProjects: Map<GitlabAccount, PagerProxy<List<GitlabProject>>>): List<DefaultMutableTreeNode> {
-        gitlabProjectsMap = accountProjects
-
-        val parents = mutableMapOf<String, DefaultMutableTreeNode>()
-        val children: MutableList<DefaultMutableTreeNode> = mutableListOf()
-        accountProjects.forEach { (gitlabAccount, gitlabProjectsPager) ->
-            val gitlabAccountRootNodeName = createGitlabTreeNodeName(gitlabAccount)
-            val hostTreeNode = parents.computeIfAbsent(gitlabAccountRootNodeName) {
-                val treeNode = DefaultMutableTreeNode(TreeNodeEntry(it))
-                children.add(treeNode)
-                return@computeIfAbsent treeNode
-            }
-
-            gitlabProjectsPager.currentData?.forEach { gitlabProject ->
-                val projectNameWithNamespace = gitlabProject.viewableProjectPath
-                if (!parents.containsKey(projectNameWithNamespace)) {
-                    val projectPathEntriesCount = projectNameWithNamespace.count { it == '/' }
-                    if (projectPathEntriesCount == 0) {
-                        val gitlabProjectTreeNode = DefaultMutableTreeNode(TreeNodeEntry(projectNameWithNamespace, gitlabProject))
-                        parents[projectNameWithNamespace] = gitlabProjectTreeNode
-                        hostTreeNode.add(gitlabProjectTreeNode)
-                    } else if (projectPathEntriesCount >= 1) {
-                        addNodeIntoTree(projectNameWithNamespace, gitlabProject, gitlabAccount, parents)
-                    }
-                }
-            }
-        }
-        return children
-    }
-
     @RequiresEdt
-    private fun updateAccountProjects(children: List<DefaultMutableTreeNode>) {
-        (ui?.model?.treeModel as? DefaultTreeModel)?.let { treeModel ->
-            val root = treeModel.root as MutableTreeNode
-            val childCount = treeModel.getChildCount(root)
-            for (i in 0 until childCount) {
-                val child = treeModel.getChild(root, i) as MutableTreeNode
-                treeModel.removeNodeFromParent(child)
-            }
-            var modifiableChildCount = 0
-            children.forEach { treeModel.insertNodeInto(it, root, modifiableChildCount++) }
-        }
-    }
-
-    @RequiresBackgroundThread
-    private fun addNodeIntoTree(gitlabProjectPath: String, gitlabProject: GitlabProject, gitlabAccount: GitlabAccount, parents: MutableMap<String, DefaultMutableTreeNode>) {
-        val parentName = gitlabProjectPath.substringBeforeLast('/')
-        if (!parents.containsKey(parentName) && parentName.contains('/')) {
-            addNodeIntoTree(parentName, gitlabProject, gitlabAccount, parents)
-        }
-        if (!parents.containsKey(parentName) && !parentName.contains('/')) {
-            parents[parentName] = DefaultMutableTreeNode(TreeNodeEntry(parentName))
-            val gitlabTreeNodeName = createGitlabTreeNodeName(gitlabAccount)
-            (parents[gitlabTreeNodeName] as DefaultMutableTreeNode).add(parents[parentName])
-        }
-        if (parents.containsKey(parentName)) {
-            val currentProjectName = gitlabProjectPath.substringAfterLast('/')
-            val treeNodeEntry = TreeNodeEntry(currentProjectName)
-            val childNode = DefaultMutableTreeNode(treeNodeEntry)
-            if (gitlabProjectPath == gitlabProject.viewableProjectPath) {
-                treeNodeEntry.gitlabProject = gitlabProject
-            }
-            parents[parentName]?.add(childNode)
-            parents[gitlabProjectPath] = childNode
+    private fun updateAccountProjects() {
+        ui?.let { localUI ->
+            localUI.repositoryListModel.removeAll()
+            gitlabProjectsMap?.entries?.mapNotNull { it.value.currentData?.map { gitlabProject -> GitlabProjectListItem(it.key, gitlabProject) } }
+                ?.forEach { pagerData -> ui?.repositoryListModel?.add(pagerData) }
         }
     }
 
     @RequiresEdt
-    private fun removeAccountProject(gitlabAccount: GitlabAccount) {
-        val gitlabTreeNodeName = createGitlabTreeNodeName(gitlabAccount)
-        (ui?.model?.treeModel?.root as? DefaultMutableTreeNode)?.let { rootNode ->
-            val childCount = rootNode.childCount
-            for (i in 0 until childCount) {
-                val childAt = rootNode.getChildAt(i) as DefaultMutableTreeNode
-                val treeNodeEntry = childAt.userObject as TreeNodeEntry
-                if (treeNodeEntry.pathName == gitlabTreeNodeName) {
-                    rootNode.remove(childAt)
-                    break
-                }
-            }
-        }
-    }
-
-    private fun createGitlabTreeNodeName(gitlabAccount: GitlabAccount) = "${gitlabAccount.getNormalizeGitlabHost()} (${gitlabAccount.username})"
+    private fun removeAccountProject(gitlabAccount: GitlabAccount) = ui?.repositoryListModel?.removeIf { it.gitlabAccount == gitlabAccount }
 
     @RequiresEdt
     override fun updateProjectName(projectName: String?) {
         ui?.directoryField?.trySetChildPath(projectName ?: "")
     }
+
+    override fun getAvailableAccounts(): Collection<GitlabAccount> = gitlabProjectsMap?.keys ?: Collections.emptyList()
 }

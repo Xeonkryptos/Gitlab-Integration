@@ -1,7 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.settings.ui;
 
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService;
-import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount;
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabSettings;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.project.Project;

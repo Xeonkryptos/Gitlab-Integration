@@ -13,13 +13,10 @@ class Pager<T>(baseUri: URI, private val token: String, private val type: Generi
 
     @Volatile
     private var firstPageUri: URI = baseUri
-
     @Volatile
     private var previousPageUri: URI? = null
-
     @Volatile
     private var nextPageUri: URI? = null
-
     @Volatile
     private var lastPageUri: URI? = null
 

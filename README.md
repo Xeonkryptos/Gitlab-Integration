@@ -20,14 +20,13 @@ nasty stuff. Note, you're not restricted to the official Gitlab at https://gitla
 Supported features:
 
 * Multi-user support on different Gitlab instances (many users for one Gitlab instance (yeah it is really supported) as many gitlab instances at the same time, too)
-* Tree representation of all projects (at least you have the rights to see them, though) or only your own. Every project of every host is visible in the same tree. Filtering via text field is available, too.
+* Representation of all projects (at least you have the rights to see them, though) or only your own. Filtering via text field is available, too.
 * Cloning of a project in the representation to your local system
-* Disabling of ssl certificate verification is possible, too. You should only enable it, when you know what you're doing and trusting the corresponding host, or the certificate of this host. Mostly
+* Disabling of ssl certificate verification is possible. You should only enable it, when you know what you're doing and trusting the corresponding host, or the certificate of this host. Mostly
   you need this feature, when you're working with a self-hosted Gitlab instance with a self-signed certificate.
 
 Planned features:
 
-* Switch between tree representation and list representation of your projects
 * Create new gitlab projects from within the IDE or set the origin of a local project to an existing in your Gitlab instance 
 * Make configurable if checkout should be done via HTTPS or SSH protocol
 * Multiuser support for different gitlab hosts

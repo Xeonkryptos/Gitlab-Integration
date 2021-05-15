@@ -1,4 +1,4 @@
-package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
+package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository
 
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 
@@ -21,4 +21,6 @@ interface CloneRepositoryUIControl {
     fun hasNextRepositories(): Boolean
 
     fun loadNextRepositories()
+
+    fun getAvailableAccounts() : Collection<GitlabAccount>
 }
