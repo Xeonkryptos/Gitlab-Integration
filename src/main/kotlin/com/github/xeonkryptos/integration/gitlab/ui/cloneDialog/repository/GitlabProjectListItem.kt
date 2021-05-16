@@ -1,6 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository
 
-import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProject
+import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabProject
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.intellij.ui.ColoredListCellRenderer
 import com.intellij.util.ui.cloneDialog.SearchableListItem

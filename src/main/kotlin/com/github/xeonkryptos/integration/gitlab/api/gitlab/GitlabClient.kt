@@ -1,4 +1,4 @@
-package com.github.xeonkryptos.integration.gitlab.api
+package com.github.xeonkryptos.integration.gitlab.api.gitlab
 
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabHostSettings
 import jakarta.ws.rs.client.Client

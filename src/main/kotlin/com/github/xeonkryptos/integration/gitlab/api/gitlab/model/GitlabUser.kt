@@ -1,4 +1,4 @@
-package com.github.xeonkryptos.integration.gitlab.api.model
+package com.github.xeonkryptos.integration.gitlab.api.gitlab.model
 
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties

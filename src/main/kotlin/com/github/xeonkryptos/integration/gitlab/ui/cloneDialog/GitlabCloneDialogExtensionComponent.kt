@@ -1,8 +1,8 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
 
-import com.github.xeonkryptos.integration.gitlab.api.GitlabUserApi
 import com.github.xeonkryptos.integration.gitlab.api.GitlabUserProvider
-import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProject
+import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabUserApi
+import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabProject
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabAccountStateNotifier
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabLoginChangeNotifier
@@ -70,8 +70,10 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     }
 
     private var gitlabProject: GitlabProject? = null
+    private val tokenLoginUI = TokenLoginUI(project)
 
-    private val tokenLoginUI = TokenLoginUI(project, gitlabApiManager)
+    @Volatile
+    private var loginFailedValidationInfo: ValidationInfo? = null
 
     init {
         initMessaging()
@@ -81,9 +83,15 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         val hasSignedInAccounts = gitlabSettings.hasGitlabAccountBy { authenticationManager.hasAuthenticationTokenFor(it) }
         if (!hasSignedInAccounts) {
             wrapper.setContent(tokenLoginUI.tokenLoginPanel)
+
+            dialogStateListener.onOkActionEnabled(true)
+            dialogStateListener.onOkActionNameChanged(GitlabBundle.message("accounts.log.in"))
         } else {
             cloneRepositoryUI.fireReloadDataEvent(ReloadDataEvent(this))
             wrapper.setContent(cloneRepositoryUI.repositoryPanel)
+
+            dialogStateListener.onOkActionEnabled(false)
+            dialogStateListener.onOkActionNameChanged(GitlabBundle.message("clone.button"))
         }
     }
 
@@ -110,6 +118,9 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         val hasLoggedInAccount = gitlabSettings.hasGitlabAccountBy { authenticationManager.hasAuthenticationTokenFor(it) }
         if (!hasLoggedInAccount) {
             wrapper.setContent(tokenLoginUI.tokenLoginPanel)
+
+            dialogStateListener.onOkActionEnabled(true)
+            dialogStateListener.onOkActionNameChanged(GitlabBundle.message("accounts.log.in"))
         }
     }
 
@@ -118,10 +129,28 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         val hasLoggedInAccount = gitlabSettings.hasGitlabAccountBy { authenticationManager.hasAuthenticationTokenFor(it) }
         if (hasLoggedInAccount) {
             wrapper.setContent(cloneRepositoryUI.repositoryPanel)
+
+            dialogStateListener.onOkActionEnabled(gitlabProject != null)
+            dialogStateListener.onOkActionNameChanged(GitlabBundle.message("clone.button"))
         }
     }
 
     override fun doClone(checkoutListener: CheckoutProvider.Listener) {
+        if (isInLoginScenery()) {
+            val gitlabLoginData = tokenLoginUI.getGitlabLoginData()
+            LoginTask(project, gitlabLoginData) { result ->
+                if (result == null) {
+                    ApplicationManager.getApplication().invokeOnDispatchThread(wrapper) { switchToRepoScenery() }
+                } else {
+                    loginFailedValidationInfo = ValidationInfo(result, tokenLoginUI.gitlabHostTxtField)
+                }
+            }.doLogin()
+        } else {
+            doRealClone(checkoutListener)
+        }
+    }
+
+    private fun doRealClone(checkoutListener: CheckoutProvider.Listener) {
         val localGitlabProject = gitlabProject
         if (localGitlabProject?.httpProjectUrl != null) {
             val parent = Paths.get(cloneRepositoryUI.directoryField.text).toAbsolutePath().parent
@@ -152,16 +181,28 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
 
     override fun doValidateAll(): List<ValidationInfo> {
         val list = ArrayList<ValidationInfo>()
-        ContainerUtil.addIfNotNull(list, CloneDvcsValidationUtils.checkDirectory(cloneRepositoryUI.directoryField.text, cloneRepositoryUI.directoryField.textField))
+        if (isInLoginScenery()) {
+            ContainerUtil.addIfNotNull(list, loginFailedValidationInfo)
+            tokenLoginUI.tokenLoginPanel.validateCallbacks.mapNotNull { it.invoke() }.forEach { list.add(it) }
+        } else {
+            ContainerUtil.addIfNotNull(list, CloneDvcsValidationUtils.checkDirectory(cloneRepositoryUI.directoryField.text, cloneRepositoryUI.directoryField.textField))
+        }
         return list
     }
 
     override fun getView(): JComponent = wrapper
 
     override fun onComponentSelected() {
-        dialogStateListener.onOkActionNameChanged(GitlabBundle.message("clone.button"))
+        if (isInLoginScenery()) {
+            dialogStateListener.onOkActionEnabled(true)
+            dialogStateListener.onOkActionNameChanged(GitlabBundle.message("accounts.log.in"))
+        } else {
+            dialogStateListener.onOkActionNameChanged(GitlabBundle.message("clone.button"))
+        }
 
         val focusManager = IdeFocusManager.getInstance(project)
         getPreferredFocusedComponent()?.let { focusManager.requestFocus(it, true) }
     }
+
+    private fun isInLoginScenery(): Boolean = wrapper.targetComponent === tokenLoginUI.tokenLoginPanel
 }

@@ -1,11 +1,11 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository
 
-import com.github.xeonkryptos.integration.gitlab.api.GitlabProjectsApi
-import com.github.xeonkryptos.integration.gitlab.api.GitlabUserApi
+import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabProjectsApi
+import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabUserApi
 import com.github.xeonkryptos.integration.gitlab.api.PagerProxy
 import com.github.xeonkryptos.integration.gitlab.api.UserProvider
-import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProject
-import com.github.xeonkryptos.integration.gitlab.api.model.GitlabUser
+import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabProject
+import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabUser
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabAccountStateNotifier
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabLoginChangeNotifier

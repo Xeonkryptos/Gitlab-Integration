@@ -1,4 +1,4 @@
-package com.github.xeonkryptos.integration.gitlab.api
+package com.github.xeonkryptos.integration.gitlab.api.gitlab
 
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService

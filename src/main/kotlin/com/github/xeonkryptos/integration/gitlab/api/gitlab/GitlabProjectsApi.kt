@@ -1,6 +1,8 @@
-package com.github.xeonkryptos.integration.gitlab.api
+package com.github.xeonkryptos.integration.gitlab.api.gitlab
 
-import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProject
+import com.github.xeonkryptos.integration.gitlab.api.Pager
+import com.github.xeonkryptos.integration.gitlab.api.PagerProxy
+import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabProject
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.project.Project
@@ -13,7 +15,6 @@ class GitlabProjectsApi(project: Project) : BaseGitlabApi(project) {
     private companion object {
         private val LOG = GitlabUtil.LOG
 
-        @JvmStatic
         private val GITLAB_PROJECTS_GENERIC_TYPE: GenericType<List<GitlabProject>> = GenericType<List<GitlabProject>>(ParameterizedTypeImpl(List::class.java, GitlabProject::class.java))
     }
 
@@ -49,4 +50,6 @@ class GitlabProjectsApi(project: Project) : BaseGitlabApi(project) {
         }
         return accountProjects
     }
+
+
 }

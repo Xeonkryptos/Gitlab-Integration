@@ -1,6 +1,6 @@
-package com.github.xeonkryptos.integration.gitlab.api
+package com.github.xeonkryptos.integration.gitlab.api.gitlab
 
-import com.github.xeonkryptos.integration.gitlab.api.model.GitlabUser
+import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabUser
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabHostSettings
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil

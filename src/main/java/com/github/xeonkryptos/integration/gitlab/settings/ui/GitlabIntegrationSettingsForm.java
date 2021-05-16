@@ -83,7 +83,7 @@ public class GitlabIntegrationSettingsForm implements Disposable {
 
         AnActionButtonRunnable onAddAction = anActionButton -> {
             AddGitlabSettingsEntryDialog addGitlabSettingsEntryDialog = new AddGitlabSettingsEntryDialog(project);
-            addGitlabSettingsEntryDialog.setVisible(true);
+            addGitlabSettingsEntryDialog.show();
         };
         AnActionButtonRunnable onRemoveAction = anActionButton -> {
             int selectedRow = gitlabHostsTbl.getSelectedRow();
