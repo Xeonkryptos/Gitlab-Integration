@@ -130,7 +130,7 @@ class GitlabHostsTableModel(componentForModalityState: JComponent, private val o
         if (removedEntry is GitlabHostSettings) {
             val size = flattenedSettings.size + 1
 
-            while (flattenedSettings.size in 1 until selectedRow && flattenedSettings[selectedRow] is GitlabAccount) (flattenedSettings.removeAt(selectedRow) as GitlabAccount).delete()
+            while (selectedRow < flattenedSettings.size && flattenedSettings[selectedRow] is GitlabAccount) (flattenedSettings.removeAt(selectedRow) as GitlabAccount).delete()
             currentSettings.removeGitlabHostSettings(removedEntry.gitlabHost)
 
             lastDeletedRowIndex = size - flattenedSettings.size

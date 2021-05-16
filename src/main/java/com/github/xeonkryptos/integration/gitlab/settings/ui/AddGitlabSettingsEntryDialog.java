@@ -1,5 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.settings.ui;
 
+import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle;
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabLoginChangeNotifier;
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount;
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.GitlabLoginData;
@@ -24,14 +25,18 @@ public class AddGitlabSettingsEntryDialog extends DialogWrapper {
         super(project, true, IdeModalityType.IDE);
 
         this.project = project;
+        this.tokenLoginUI = new TokenLoginUI(project);
 
-        setTitle("Add New Entry");
-        setHorizontalStretch(1.3f);
-        centerRelativeToParent();
-
-        tokenLoginUI = new TokenLoginUI(project);
         Disposer.register(getDisposable(), tokenLoginUI);
         init();
+
+        setTitle("Add New Entry");
+        setHorizontalStretch(1.5f);
+        centerRelativeToParent();
+        setOKButtonText(GitlabBundle.message("accounts.log.in"));
+        Action okAction = getOKAction();
+        JButton okButton = getButton(okAction);
+        getRootPane().setDefaultButton(okButton);
 
         final Application application = ApplicationManager.getApplication();
         MessageBusConnection connection = application.getMessageBus().connect(getDisposable());
@@ -64,7 +69,8 @@ public class AddGitlabSettingsEntryDialog extends DialogWrapper {
         new LoginTask(project, gitlabLoginData, result -> {
             setErrorText(result);
             if (result == null) {
-                super.doOKAction();
+                // Because of the modality behaviour, ApplicationManager.invokeLater() can't be used.
+                SwingUtilities.invokeLater(() -> close(OK_EXIT_CODE));
             }
         }).doLogin();
     }
