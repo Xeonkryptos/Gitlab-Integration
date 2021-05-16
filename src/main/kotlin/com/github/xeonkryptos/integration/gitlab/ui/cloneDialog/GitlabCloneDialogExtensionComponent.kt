@@ -1,6 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
 
-import com.github.xeonkryptos.integration.gitlab.api.GitlabApiManager
+import com.github.xeonkryptos.integration.gitlab.api.GitlabUserApi
 import com.github.xeonkryptos.integration.gitlab.api.GitlabUserProvider
 import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProject
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
@@ -45,7 +45,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         private val LOG = GitlabUtil.LOG
     }
 
-    private val gitlabApiManager = GitlabApiManager(project)
+    private val gitlabApiManager = GitlabUserApi(project)
     private val gitlabSettings = GitlabSettingsService.getInstance(project).state
     private val authenticationManager = AuthenticationManager.getInstance(project)
 

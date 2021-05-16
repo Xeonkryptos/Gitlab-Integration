@@ -1,6 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.settings.ui;
 
-import com.github.xeonkryptos.integration.gitlab.api.GitlabApiManager;
+import com.github.xeonkryptos.integration.gitlab.api.GitlabUserApi;
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabLoginChangeNotifier;
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount;
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.TokenLoginUI;
@@ -57,7 +57,7 @@ public class AddGitlabSettingsEntryDialog extends JDialog implements Disposable 
 
         // TODO: Using pack is far from perfect, but there isn't an easy way to update the size depending on the errorLabel text that I'm aware of. It's only a small detail. Maybe the error message will only be available
         //  in the logs or with a different UI design, like an error label independent from tokenLoginPanel.
-        tokenLoginUI = new TokenLoginUI(project, new GitlabApiManager(project), this::pack);
+        tokenLoginUI = new TokenLoginUI(project, new GitlabUserApi(project), this::pack);
         DialogPanel tokenLoginPanel = tokenLoginUI.getTokenLoginPanel();
         settingsEntryPane.add(tokenLoginPanel);
 

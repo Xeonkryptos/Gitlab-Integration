@@ -1,6 +1,7 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository
 
-import com.github.xeonkryptos.integration.gitlab.api.GitlabApiManager
+import com.github.xeonkryptos.integration.gitlab.api.GitlabProjectsApi
+import com.github.xeonkryptos.integration.gitlab.api.GitlabUserApi
 import com.github.xeonkryptos.integration.gitlab.api.PagerProxy
 import com.github.xeonkryptos.integration.gitlab.api.UserProvider
 import com.github.xeonkryptos.integration.gitlab.api.model.GitlabProject
@@ -28,8 +29,6 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
-import com.intellij.ui.DocumentAdapter
-import com.intellij.ui.KeyStrokeAdapter
 import com.intellij.util.ImageLoader
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.progress.ProgressVisibilityManager
@@ -39,12 +38,10 @@ import com.intellij.util.ui.cloneDialog.AccountMenuPopupStep
 import com.intellij.util.ui.cloneDialog.AccountsMenuListPopup
 import com.intellij.util.ui.cloneDialog.VcsCloneDialogUiSpec
 import com.jetbrains.rd.util.firstOrNull
-import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.ImageIcon
 import javax.swing.JLabel
-import javax.swing.event.DocumentEvent
 
 /**
  * @author Xeonkryptos
@@ -54,7 +51,8 @@ class DefaultCloneRepositoryUIControl(private val project: Project, val ui: Clon
 
     private val applicationManager = ApplicationManager.getApplication()
 
-    private val gitlabApiManager = GitlabApiManager(project)
+    private val gitlabUserApi = GitlabUserApi(project)
+    private val gitlabProjectsApi = GitlabProjectsApi(project)
     private val gitlabSettings = GitlabSettingsService.getInstance(project).state
     private val authenticationManager = AuthenticationManager.getInstance(project)
 
@@ -178,7 +176,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, val ui: Clon
 
             override fun run(indicator: ProgressIndicator) {
                 val gitlabAccounts = loadAccounts()
-                val localGitlabProjectsMap = gitlabApiManager.retrieveGitlabProjectsFor(gitlabAccounts)
+                val localGitlabProjectsMap = gitlabProjectsApi.retrieveGitlabProjectsFor(gitlabAccounts)
                 gitlabProjectsMap = localGitlabProjectsMap
                 updatePagingPointers(localGitlabProjectsMap.values)
 
@@ -194,7 +192,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, val ui: Clon
 
             override fun run(indicator: ProgressIndicator) {
                 val gitlabAccounts: Collection<GitlabAccount> = gitlabProjectsMap?.keys ?: loadAccounts()
-                val localGitlabProjectsMap = gitlabApiManager.retrieveGitlabProjectsFor(gitlabAccounts, globalSearchText)
+                val localGitlabProjectsMap = gitlabProjectsApi.retrieveGitlabProjectsFor(gitlabAccounts, globalSearchText)
                 gitlabProjectsMap = localGitlabProjectsMap
                 updatePagingPointers(localGitlabProjectsMap.values)
 
@@ -206,7 +204,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, val ui: Clon
 
     private fun loadAccounts(): List<GitlabAccount> {
         val gitlabAccounts: List<GitlabAccount> = gitlabSettings.getAllGitlabAccountsBy { authenticationManager.hasAuthenticationTokenFor(it) }
-        val gitlabUsersMap = gitlabApiManager.retrieveGitlabUsersFor(gitlabAccounts)
+        val gitlabUsersMap = gitlabUserApi.retrieveGitlabUsersFor(gitlabAccounts)
 
         applicationManager.invokeLater {
             val firstUserEntry = gitlabUsersMap.firstOrNull()

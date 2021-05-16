@@ -1,6 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
 
-import com.github.xeonkryptos.integration.gitlab.api.GitlabApiManager
+import com.github.xeonkryptos.integration.gitlab.api.GitlabUserApi
 import com.github.xeonkryptos.integration.gitlab.api.model.GitlabUser
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
@@ -28,7 +28,7 @@ import javax.swing.event.DocumentListener
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class TokenLoginUI @JvmOverloads constructor(project: Project, private val gitlabApiManager: GitlabApiManager, private val errorNotificationListener: Runnable? = null) {
+class TokenLoginUI @JvmOverloads constructor(project: Project, private val gitlabUserApi: GitlabUserApi, private val errorNotificationListener: Runnable? = null) {
 
     private companion object {
         private val LOG = GitlabUtil.LOG
@@ -115,7 +115,7 @@ class TokenLoginUI @JvmOverloads constructor(project: Project, private val gitla
         override fun run(indicator: ProgressIndicator) {
             try {
                 indicator.checkCanceled()
-                val gitlabUser: GitlabUser = gitlabApiManager.loadGitlabUser(gitlabHostSettings, gitlabAccessToken)
+                val gitlabUser: GitlabUser = gitlabUserApi.loadGitlabUser(gitlabHostSettings, gitlabAccessToken)
 
                 indicator.checkCanceled()
                 val localGitlabAccount = gitlabHostSettings.createGitlabAccount(gitlabUser.username)

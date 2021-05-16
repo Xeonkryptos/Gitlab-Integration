@@ -8,9 +8,9 @@ import com.github.xeonkryptos.integration.gitlab.service.data.GitlabSettings
  * @author Xeonkryptos
  * @since 11.12.2020
  */
-class GitlabUserProvider(private val gitlabApiManager: GitlabApiManager, private val gitlabSettings: GitlabSettings) : UserProvider {
+class GitlabUserProvider(private val gitlabUserApi: GitlabUserApi, private val gitlabSettings: GitlabSettings) : UserProvider {
 
     override fun getUsers(): Map<GitlabAccount, GitlabUser> {
-        return gitlabApiManager.retrieveGitlabUsersFor(gitlabSettings.getAllGitlabAccounts())
+        return gitlabUserApi.retrieveGitlabUsersFor(gitlabSettings.getAllGitlabAccounts())
     }
 }
