@@ -9,6 +9,7 @@ import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.util.messages.MessageBusConnection;
 import javax.swing.*;
 import org.jetbrains.annotations.NotNull;
@@ -29,6 +30,7 @@ public class AddGitlabSettingsEntryDialog extends DialogWrapper {
         centerRelativeToParent();
 
         tokenLoginUI = new TokenLoginUI(project);
+        Disposer.register(getDisposable(), tokenLoginUI);
         init();
 
         final Application application = ApplicationManager.getApplication();

@@ -19,6 +19,7 @@ import com.github.xeonkryptos.integration.gitlab.util.invokeOnDispatchThread
 import com.intellij.dvcs.ui.CloneDvcsValidationUtils
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.ComponentValidator
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vcs.CheckoutProvider
@@ -33,6 +34,7 @@ import com.intellij.util.ui.UIUtil
 import git4idea.checkout.GitCheckoutProvider
 import git4idea.commands.Git
 import java.nio.file.Paths
+import java.util.function.Supplier
 import javax.swing.JComponent
 
 /**
@@ -70,22 +72,30 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     }
 
     private var gitlabProject: GitlabProject? = null
-    private val tokenLoginUI = TokenLoginUI(project)
+    private val tokenLoginUI: TokenLoginUI = TokenLoginUI(project) { gitlabLoginData, gitlabHostTxtField ->
+        LoginTask(project, gitlabLoginData) { result ->
+            if (result == null) {
+                ApplicationManager.getApplication().invokeOnDispatchThread(wrapper) { switchToRepoScenery() }
+            } else {
+                loginFailedValidationInfo = ValidationInfo(result, gitlabHostTxtField)
+                loginValidator.revalidate()
+            }
+        }.doLogin()
+    }
 
     @Volatile
     private var loginFailedValidationInfo: ValidationInfo? = null
+    private val loginValidator = ComponentValidator(this).withValidator(Supplier<ValidationInfo?> { loginFailedValidationInfo }).installOn(tokenLoginUI.gitlabHostTxtField)
 
     init {
         initMessaging()
 
         Disposer.register(this, cloneRepositoryUI)
+        Disposer.register(this, tokenLoginUI)
 
         val hasSignedInAccounts = gitlabSettings.hasGitlabAccountBy { authenticationManager.hasAuthenticationTokenFor(it) }
         if (!hasSignedInAccounts) {
             wrapper.setContent(tokenLoginUI.tokenLoginPanel)
-
-            dialogStateListener.onOkActionEnabled(true)
-            dialogStateListener.onOkActionNameChanged(GitlabBundle.message("accounts.log.in"))
         } else {
             cloneRepositoryUI.fireReloadDataEvent(ReloadDataEvent(this))
             wrapper.setContent(cloneRepositoryUI.repositoryPanel)
@@ -136,21 +146,6 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     }
 
     override fun doClone(checkoutListener: CheckoutProvider.Listener) {
-        if (isInLoginScenery()) {
-            val gitlabLoginData = tokenLoginUI.getGitlabLoginData()
-            LoginTask(project, gitlabLoginData) { result ->
-                if (result == null) {
-                    ApplicationManager.getApplication().invokeOnDispatchThread(wrapper) { switchToRepoScenery() }
-                } else {
-                    loginFailedValidationInfo = ValidationInfo(result, tokenLoginUI.gitlabHostTxtField)
-                }
-            }.doLogin()
-        } else {
-            doRealClone(checkoutListener)
-        }
-    }
-
-    private fun doRealClone(checkoutListener: CheckoutProvider.Listener) {
         val localGitlabProject = gitlabProject
         if (localGitlabProject?.httpProjectUrl != null) {
             val parent = Paths.get(cloneRepositoryUI.directoryField.text).toAbsolutePath().parent
@@ -190,19 +185,14 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         return list
     }
 
+    private fun isInLoginScenery(): Boolean = wrapper.targetComponent === tokenLoginUI.tokenLoginPanel
+
     override fun getView(): JComponent = wrapper
 
     override fun onComponentSelected() {
-        if (isInLoginScenery()) {
-            dialogStateListener.onOkActionEnabled(true)
-            dialogStateListener.onOkActionNameChanged(GitlabBundle.message("accounts.log.in"))
-        } else {
-            dialogStateListener.onOkActionNameChanged(GitlabBundle.message("clone.button"))
-        }
+        dialogStateListener.onOkActionNameChanged(GitlabBundle.message("clone.button"))
 
         val focusManager = IdeFocusManager.getInstance(project)
         getPreferredFocusedComponent()?.let { focusManager.requestFocus(it, true) }
     }
-
-    private fun isInLoginScenery(): Boolean = wrapper.targetComponent === tokenLoginUI.tokenLoginPanel
 }

@@ -62,7 +62,7 @@ class LoginTask(
         } catch (e: ProcessCanceledException) {
             onCancel()
         } catch (e: Exception) {
-            LOG.error("Log in with provided access token failed.", e, "Host: ${gitlabLoginData.gitlabHost}")
+            LOG.warn("Log in with provided access token failed.", e)
             if (loginNotificationListener != null) {
                 val errorMessage = GitlabBundle.message("action.gitlab.accounts.addGitlabAccountWithToken.failure", e.toString())
                 loginNotificationListener.accept(errorMessage)
