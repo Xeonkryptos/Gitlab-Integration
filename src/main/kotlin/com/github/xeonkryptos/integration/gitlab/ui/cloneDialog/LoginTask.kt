@@ -64,7 +64,7 @@ class LoginTask(
         } catch (e: Exception) {
             LOG.warn("Log in with provided access token failed.", e)
             if (loginNotificationListener != null) {
-                val errorMessage = GitlabBundle.message("action.gitlab.accounts.addGitlabAccountWithToken.failure", e.toString())
+                val errorMessage = GitlabBundle.message("credentials.incorrect", e.toString())
                 loginNotificationListener.accept(errorMessage)
             }
         }

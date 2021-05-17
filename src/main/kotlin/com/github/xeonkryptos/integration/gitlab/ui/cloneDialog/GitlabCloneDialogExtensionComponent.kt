@@ -178,7 +178,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         val list = ArrayList<ValidationInfo>()
         if (isInLoginScenery()) {
             ContainerUtil.addIfNotNull(list, loginFailedValidationInfo)
-            tokenLoginUI.tokenLoginPanel.validateCallbacks.mapNotNull { it.invoke() }.forEach { list.add(it) }
+            tokenLoginUI.tokenLoginPanel.validateCallbacks.mapNotNull { it() }.forEach { list.add(it) }
         } else {
             ContainerUtil.addIfNotNull(list, CloneDvcsValidationUtils.checkDirectory(cloneRepositoryUI.directoryField.text, cloneRepositoryUI.directoryField.textField))
         }
