@@ -1,7 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.settings
 
 import com.github.xeonkryptos.integration.gitlab.settings.ui.GitlabIntegrationSettingsForm
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
@@ -15,7 +14,7 @@ class GitlabIntegrationSettingsConfigurable(project: Project) : Configurable {
 
     private val settingsForm: GitlabIntegrationSettingsForm by lazy { GitlabIntegrationSettingsForm(project) }
 
-    override fun createComponent(): JComponent? = settingsForm.settingsPanel
+    override fun createComponent(): JComponent = settingsForm.gitlabTablePanel
 
     override fun isModified(): Boolean {
         return settingsForm.isModified

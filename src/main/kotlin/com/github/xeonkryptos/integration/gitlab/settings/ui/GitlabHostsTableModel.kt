@@ -5,10 +5,8 @@ import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabAccoun
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabHostSettings
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabSettings
-import com.github.xeonkryptos.integration.gitlab.util.invokeOnDispatchThread
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
-import javax.swing.JComponent
 import javax.swing.table.AbstractTableModel
 
 /**
@@ -19,7 +17,7 @@ import javax.swing.table.AbstractTableModel
  * @author Xeonkryptos
  * @since 16.02.2021
  */
-class GitlabHostsTableModel(componentForModalityState: JComponent, private val originalSettings: GitlabSettings) : AbstractTableModel(), Disposable {
+class GitlabHostsTableModel(private val originalSettings: GitlabSettings) : AbstractTableModel(), Disposable {
 
     private val currentSettings: GitlabSettings = originalSettings.deepCopy()
 
@@ -31,9 +29,9 @@ class GitlabHostsTableModel(componentForModalityState: JComponent, private val o
         val applicationManager = ApplicationManager.getApplication()
         val messageBusConnection = applicationManager.messageBus.connect(this)
         messageBusConnection.subscribe(GitlabAccountStateNotifier.ACCOUNT_STATE_TOPIC, object : GitlabAccountStateNotifier {
-            override fun onGitlabAccountCreated(gitlabAccount: GitlabAccount): Unit = applicationManager.invokeOnDispatchThread(componentForModalityState) { registerNewGitlabAccount(gitlabAccount) }
+            override fun onGitlabAccountCreated(gitlabAccount: GitlabAccount): Unit = applicationManager.invokeLater { registerNewGitlabAccount(gitlabAccount) }
 
-            override fun onGitlabAccountDeleted(gitlabAccount: GitlabAccount): Unit = applicationManager.invokeOnDispatchThread(componentForModalityState) { removeGitlabAccount(gitlabAccount) }
+            override fun onGitlabAccountDeleted(gitlabAccount: GitlabAccount): Unit = applicationManager.invokeLater { removeGitlabAccount(gitlabAccount) }
         })
     }
 
@@ -41,20 +39,20 @@ class GitlabHostsTableModel(componentForModalityState: JComponent, private val o
 
     override fun getColumnName(column: Int): String? {
         return when (column) {
-            0    -> GitlabBundle.message("settings.general.table.column.host")
-            1    -> GitlabBundle.message("settings.general.table.column.certificates")
-            2    -> GitlabBundle.message("settings.general.table.column.username")
-            3    -> GitlabBundle.message("settings.general.table.column.resolve")
+            0 -> GitlabBundle.message("settings.general.table.column.host")
+            1 -> GitlabBundle.message("settings.general.table.column.certificates")
+            2 -> GitlabBundle.message("settings.general.table.column.username")
+            3 -> GitlabBundle.message("settings.general.table.column.resolve")
             else -> null
         }
     }
 
     override fun getColumnClass(column: Int): Class<*>? {
         return when (column) {
-            0    -> String::class.java
-            1    -> Boolean::class.java
-            2    -> String::class.java
-            3    -> Boolean::class.java
+            0 -> String::class.java
+            1 -> Boolean::class.java
+            2 -> String::class.java
+            3 -> Boolean::class.java
             else -> null
         }
     }
@@ -65,15 +63,15 @@ class GitlabHostsTableModel(componentForModalityState: JComponent, private val o
         val userObject = flattenedSettings[row]
         if (userObject is GitlabHostSettings) {
             return when (column) {
-                0    -> userObject.gitlabHost
-                1    -> userObject.disableSslVerification
+                0 -> userObject.gitlabHost
+                1 -> userObject.disableSslVerification
                 else -> null
             }
         }
         if (userObject is GitlabAccount) {
             return when (column) {
-                2    -> userObject.username
-                3    -> userObject.resolveOnlyOwnProjects
+                2 -> userObject.username
+                3 -> userObject.resolveOnlyOwnProjects
                 else -> null
             }
         }
@@ -150,7 +148,7 @@ class GitlabHostsTableModel(componentForModalityState: JComponent, private val o
     fun reset() {
         currentSettings.gitlabHostSettings.values.forEach { it.updateWith(originalSettings.gitlabHostSettings[it.gitlabHost]!!) }
         originalSettings.gitlabHostSettings.filterNot { entry -> currentSettings.containsGitlabHostSettings(entry.key) }
-                .forEach { entry -> currentSettings.getOrCreateGitlabHostSettings(entry.key).updateWith(entry.value) }
+            .forEach { entry -> currentSettings.getOrCreateGitlabHostSettings(entry.key).updateWith(entry.value) }
 
         flattenedSettings.clear()
         rebuildFlattenedSettings()

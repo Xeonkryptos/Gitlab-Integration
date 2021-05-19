@@ -74,10 +74,6 @@ changelog {
 }
 
 tasks {
-    withType<JavaCompile> {
-        sourceCompatibility = "11"
-        targetCompatibility = "11"
-    }
     withType<KotlinCompile> {
         kotlinOptions.jvmTarget = "11"
     }
