@@ -66,11 +66,11 @@ class ProjectLinkerDialog(project: Project) : DialogWrapper(project) {
     }
 
     init {
+        setAutoAdjustable(true)
         init()
         title = GitlabBundle.message("share.dialog.module.title")
         centerRelativeToParent()
         setOKButtonText(GitlabBundle.message("share.button"))
-        horizontalStretch = 1.3f
     }
 
     override fun createCenterPanel(): JComponent = centerPanel
@@ -85,5 +85,6 @@ class ProjectLinkerDialog(project: Project) : DialogWrapper(project) {
         }
         // Reset to trigger a read from the property bindings defined above via Kotlin UI DSL. Else, the components wouldn't know there are default values to use and simply don't show them.
         centerPanel.reset()
+        pack()
     }
 }
