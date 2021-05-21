@@ -9,6 +9,9 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.vfs.VfsUtil
+import git4idea.repo.GitRepositoryManager
+import java.nio.file.Path
 
 
 class ProjectLinkerAction : AnAction() {
@@ -42,10 +45,24 @@ class ProjectLinkerAction : AnAction() {
         val gitlabSettingsService = GitlabSettingsService.getInstance(project!!)
         val allGitlabAccounts = gitlabSettingsService.state.getAllGitlabAccounts()
 
-        val projectLinkerDialog = ProjectLinkerDialog(project)
-        projectLinkerDialog.fillWithDefaultValues(selectedModule.name, allGitlabAccounts)
+        val projectLinkerDialog = ProjectLinkerDialog(selectedModule, project)
+        projectLinkerDialog.fillWithDefaultValues(allGitlabAccounts)
         if (projectLinkerDialog.showAndGet()) {
             // TODO: Extract chosen values from dialog and use them to share project
+            val gitlabHost = projectLinkerDialog.selectedAccount!!.getTargetGitlabHost()
+            val gitlabHostWithoutProtocol = "${gitlabHost.replace(Regex("http?://"), "")}/"
+
+            val gitRepositoryManager = GitRepositoryManager.getInstance(project)
+            val moduleRootDirVirtualFile = VfsUtil.findFile(Path.of(projectLinkerDialog.moduleRootDir), false)!!
+            val foundGitRepository = gitRepositoryManager.getRepositoryForRootQuick(moduleRootDirVirtualFile)
+            if (foundGitRepository != null && foundGitRepository.remotes.asSequence().flatMap { it.pushUrls }.any { it.contains(gitlabHostWithoutProtocol) }) {
+                // TODO: Exists already on the gitlab. Ask, if it should be uploaded again.
+            } else if (foundGitRepository != null) {
+                // TODO: Project isn't at the configured gitlab instance (at least, not yet after looking into configured/known remotes), but a git repository is available. So, simply upload it and add
+                //  it as a new remote.
+            } else {
+                // TODO: Isn't a git repository. Create a git repository and upload it to gitlab after creating the project
+            }
         }
     }
 }

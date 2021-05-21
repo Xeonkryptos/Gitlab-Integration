@@ -61,11 +61,11 @@ class GitlabIntegrationSettingsForm(private val project: Project) : Disposable {
         gitlabHostsTbl = JBTable(gitlabHostsTableModel, tableColumnModel)
         gitlabHostsTbl.setShowGrid(false)
 
-        val onAddAction = AnActionButtonRunnable { anActionButton: AnActionButton? ->
+        val onAddAction = AnActionButtonRunnable {
             val addGitlabSettingsEntryDialog = AddGitlabSettingsEntryDialog(project)
             addGitlabSettingsEntryDialog.show()
         }
-        val onRemoveAction = AnActionButtonRunnable { anActionButton: AnActionButton? ->
+        val onRemoveAction = AnActionButtonRunnable {
             val selectedRow = gitlabHostsTbl.selectedRow
             gitlabHostsTableModel.removeEntry(selectedRow)
         }
