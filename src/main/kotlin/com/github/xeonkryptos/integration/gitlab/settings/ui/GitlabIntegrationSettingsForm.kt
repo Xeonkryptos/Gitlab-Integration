@@ -1,17 +1,14 @@
 package com.github.xeonkryptos.integration.gitlab.settings.ui
 
-import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService.Companion.getInstance
-import com.github.xeonkryptos.integration.gitlab.settings.ui.AddGitlabSettingsEntryDialog
-import com.github.xeonkryptos.integration.gitlab.settings.ui.GitlabHostsTableModel
+import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
-import com.intellij.ui.AnActionButton
 import com.intellij.ui.AnActionButtonRunnable
 import com.intellij.ui.BooleanTableCellEditor
 import com.intellij.ui.BooleanTableCellRenderer
 import com.intellij.ui.ToolbarDecorator
-import com.intellij.ui.components.JBPanel
 import com.intellij.ui.table.JBTable
 import javax.swing.JPanel
 import javax.swing.table.DefaultTableColumnModel
@@ -32,7 +29,7 @@ class GitlabIntegrationSettingsForm(private val project: Project) : Disposable {
         get() = gitlabHostsTableModel.isModified()
 
     init {
-        val settings = getInstance(project).state
+        val settings = project.service<GitlabSettingsService>().state
         gitlabHostsTableModel = GitlabHostsTableModel(settings)
         Disposer.register(this, gitlabHostsTableModel)
 

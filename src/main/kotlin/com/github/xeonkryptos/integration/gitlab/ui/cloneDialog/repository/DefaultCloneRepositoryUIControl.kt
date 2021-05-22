@@ -1,7 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository
 
 import com.github.xeonkryptos.integration.gitlab.api.PagerProxy
-import com.github.xeonkryptos.integration.gitlab.api.UserProvider
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabProjectsApi
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabUserApi
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabProject
@@ -25,6 +24,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
@@ -47,12 +47,12 @@ import javax.swing.SwingUtilities
  * @author Xeonkryptos
  * @since 20.02.2021
  */
-class DefaultCloneRepositoryUIControl(private val project: Project, val ui: CloneRepositoryUI, private val userProvider: UserProvider) : CloneRepositoryUIControl {
+class DefaultCloneRepositoryUIControl(private val project: Project, val ui: CloneRepositoryUI) : CloneRepositoryUIControl {
 
-    private val gitlabUserApi = GitlabUserApi(project)
-    private val gitlabProjectsApi = GitlabProjectsApi(project)
-    private val gitlabSettings = GitlabSettingsService.getInstance(project).state
-    private val authenticationManager = AuthenticationManager.getInstance(project)
+    private val gitlabUserApi = project.service<GitlabUserApi>()
+    private val gitlabProjectsApi = project.service<GitlabProjectsApi>()
+    private val gitlabSettings = project.service<GitlabSettingsService>().state
+    private val authenticationManager = service<AuthenticationManager>()
 
     @Volatile
     private var gitlabProjectsMap: Map<GitlabAccount, PagerProxy<List<GitlabProject>>>? = null
@@ -107,7 +107,9 @@ class DefaultCloneRepositoryUIControl(private val project: Project, val ui: Clon
     private fun showPopupMenu() {
         val menuItems = mutableListOf<AccountMenuItem>()
 
-        for ((index, userEntry) in userProvider.getUsers().entries.withIndex()) {
+        val settingsService = project.service<GitlabSettingsService>()
+        val gitlabUsersPerAccount = project.service<GitlabUserApi>().retrieveGitlabUsersFor(settingsService.state.getAllGitlabAccounts())
+        for ((index, userEntry) in gitlabUsersPerAccount.entries.withIndex()) {
             val accountTitle = userEntry.value.name
 
             @Suppress("HttpUrlsUsage")

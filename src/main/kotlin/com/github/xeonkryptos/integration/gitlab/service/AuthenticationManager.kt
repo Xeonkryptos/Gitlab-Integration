@@ -6,29 +6,13 @@ import com.intellij.credentialStore.CredentialAttributes
 import com.intellij.credentialStore.generateServiceName
 import com.intellij.ide.passwordSafe.PasswordSafe
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.project.Project
 import com.intellij.util.messages.MessageBus
 
 /**
  * @author Xeonkryptos
  * @since 01.02.2021
  */
-class AuthenticationManager private constructor(@Suppress("UNUSED_PARAMETER") project: Project) {
-
-    companion object {
-
-        @JvmStatic
-        private var instance: AuthenticationManager? = null
-
-        @JvmStatic
-        @Synchronized
-        fun getInstance(project: Project): AuthenticationManager {
-            if (instance == null) {
-                instance = AuthenticationManager(project)
-            }
-            return instance!!
-        }
-    }
+class AuthenticationManager {
 
     private val messageBus: MessageBus = ApplicationManager.getApplication().messageBus
 

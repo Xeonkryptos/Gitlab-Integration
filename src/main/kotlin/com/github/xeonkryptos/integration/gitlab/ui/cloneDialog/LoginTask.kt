@@ -9,6 +9,7 @@ import com.github.xeonkryptos.integration.gitlab.service.data.GitlabHostSettings
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.EmptyProgressIndicator
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressIndicator
@@ -27,8 +28,8 @@ class LoginTask(
         private val LOG = GitlabUtil.LOG
     }
 
-    private val authenticationManager = AuthenticationManager.getInstance(project)
-    private val gitlabUserApi: GitlabUserApi = GitlabUserApi(project)
+    private val authenticationManager = service<AuthenticationManager>()
+    private val gitlabUserApi: GitlabUserApi = project.service()
 
     private val gitlabHostSettings: GitlabHostSettings = GitlabHostSettings(gitlabLoginData.gitlabHost).apply { disableSslVerification = gitlabLoginData.disableCertificateValidation }
 

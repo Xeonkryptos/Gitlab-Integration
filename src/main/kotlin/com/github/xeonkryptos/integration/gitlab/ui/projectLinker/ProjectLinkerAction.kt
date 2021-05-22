@@ -5,6 +5,8 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.LangDataKeys
+import com.intellij.openapi.components.service
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
@@ -17,7 +19,7 @@ import java.nio.file.Path
 class ProjectLinkerAction : AnAction() {
 
     companion object {
-        private val defaultProject: Project = ProjectManager.getInstance().defaultProject
+        private val defaultProject: Project = service<ProjectManager>().defaultProject
     }
 
     override fun update(e: AnActionEvent) {
@@ -43,13 +45,14 @@ class ProjectLinkerAction : AnAction() {
         if (project == null) {
             project = selectedModule.project
         }
-        val gitlabSettingsService = GitlabSettingsService.getInstance(project)
+        val gitlabSettingsService = project.service<GitlabSettingsService>()
         val allGitlabAccounts = gitlabSettingsService.state.getAllGitlabAccounts()
+
+        service<FileDocumentManager>().saveAllDocuments()
 
         val projectLinkerDialog = ProjectLinkerDialog(selectedModule, project)
         projectLinkerDialog.fillWithDefaultValues(allGitlabAccounts)
         if (projectLinkerDialog.showAndGet()) {
-            // TODO: Extract chosen values from dialog and use them to share project
             val gitlabHost = projectLinkerDialog.selectedAccount!!.getTargetGitlabHost()
             val gitlabHostWithoutProtocol = "${gitlabHost.replace(Regex("http?://"), "")}/"
 

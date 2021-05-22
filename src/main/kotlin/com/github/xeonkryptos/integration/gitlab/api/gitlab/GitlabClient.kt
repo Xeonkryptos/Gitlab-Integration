@@ -12,7 +12,7 @@ import javax.net.ssl.TrustManager
 import javax.net.ssl.X509ExtendedTrustManager
 import org.glassfish.jersey.client.JerseyClientBuilder
 
-object GitlabClient {
+class GitlabClient {
 
     private val gitlabClientWithoutSslVerification: Client
     private val gitlabClientWithSslVerification: Client

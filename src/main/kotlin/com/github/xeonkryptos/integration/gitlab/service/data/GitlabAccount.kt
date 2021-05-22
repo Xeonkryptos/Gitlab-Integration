@@ -7,7 +7,7 @@ import com.intellij.util.xmlb.annotations.Transient
  * @author Xeonkryptos
  * @since 11.12.2020
  */
-data class GitlabAccount(@Volatile var userId: Int? = null, @Volatile var username: String = "") {
+data class GitlabAccount(@Volatile var userId: Long? = null, @Volatile var username: String = "", @Volatile var pushWithSSH: Boolean = false) {
 
     @Volatile
     @Transient
@@ -21,12 +21,12 @@ data class GitlabAccount(@Volatile var userId: Int? = null, @Volatile var userna
         this.gitlabHostSettingsOwner = gitlabHostSettings
     }
 
-    fun delete() {
-        gitlabHostSettingsOwner?.removeGitlabAccount(this)
-    }
-
     fun updateWith(gitlabAccount: GitlabAccount) {
         resolveOnlyOwnProjects = gitlabAccount.resolveOnlyOwnProjects
+    }
+
+    fun delete() {
+        gitlabHostSettingsOwner?.removeGitlabAccount(this)
     }
 
     fun isModified(gitlabAccount: GitlabAccount): Boolean =
@@ -48,7 +48,7 @@ data class GitlabAccount(@Volatile var userId: Int? = null, @Volatile var userna
     }
 
     fun deepCopy(): GitlabAccount {
-        val newGitlabAccount = GitlabAccount(userId, username)
+        val newGitlabAccount = GitlabAccount(userId, username, pushWithSSH)
         newGitlabAccount.resolveOnlyOwnProjects = resolveOnlyOwnProjects
         return newGitlabAccount
     }

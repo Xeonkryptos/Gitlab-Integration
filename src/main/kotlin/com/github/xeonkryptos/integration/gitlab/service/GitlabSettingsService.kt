@@ -13,21 +13,6 @@ import com.intellij.openapi.project.Project
 @State(name = "gitlab-settings", reloadable = true)
 class GitlabSettingsService(@Suppress("UNUSED_PARAMETER") project: Project) : PersistentStateComponent<GitlabSettings> {
 
-    companion object {
-
-        @JvmStatic
-        private var instance: GitlabSettingsService? = null
-
-        @JvmStatic
-        @Synchronized
-        fun getInstance(project: Project): GitlabSettingsService {
-            if (instance == null) {
-                instance = project.service()
-            }
-            return instance!!
-        }
-    }
-
     private var gitlabData = GitlabSettings()
 
     override fun getState(): GitlabSettings = gitlabData

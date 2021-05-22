@@ -3,6 +3,7 @@ package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComponentValidator
 import com.intellij.openapi.ui.DialogPanel
@@ -25,7 +26,7 @@ import javax.swing.event.DocumentEvent
 class TokenLoginUI @JvmOverloads constructor(project: Project, withPanelTitle: Boolean = true, onLoginAction: ((gitlabLoginData: GitlabLoginData, gitlabHostTxtField: JBTextField) -> Unit)? = null) :
     Disposable {
 
-    private val gitlabSettings = GitlabSettingsService.getInstance(project).state
+    private val gitlabSettings = project.service<GitlabSettingsService>().state
 
     val gitlabHostTxtField: JBTextField = JBTextField().apply {
         document.addDocumentListener(object : DocumentAdapter() {

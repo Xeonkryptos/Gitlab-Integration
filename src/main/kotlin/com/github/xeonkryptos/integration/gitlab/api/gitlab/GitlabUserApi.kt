@@ -4,6 +4,7 @@ import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabUser
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabHostSettings
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 
 /**
@@ -32,7 +33,7 @@ class GitlabUserApi(project: Project) : BaseGitlabApi(project) {
     }
 
     fun loadGitlabUser(gitlabHostSettings: GitlabHostSettings, accessToken: String): GitlabUser {
-        val gitlabClient = GitlabClient.getGitlabApiClient(gitlabHostSettings)
+        val gitlabClient = service<GitlabClient>().getGitlabApiClient(gitlabHostSettings)
         val invocation = gitlabClient.target(gitlabHostSettings.gitlabHost).path("api/v4/user").request().header("PRIVATE-TOKEN", accessToken).buildGet()
         return invocation.invoke(GitlabUser::class.java)
     }

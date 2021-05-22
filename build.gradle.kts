@@ -33,7 +33,6 @@ version = pluginVersion
 // Configure project's dependencies
 repositories {
     mavenCentral()
-    jcenter()
 }
 dependencies {
     implementation("org.glassfish.jersey.core:jersey-client:3.0.1")

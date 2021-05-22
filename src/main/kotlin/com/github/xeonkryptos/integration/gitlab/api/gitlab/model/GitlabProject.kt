@@ -12,12 +12,12 @@ import com.fasterxml.jackson.annotation.JsonProperty
 class GitlabProject @JsonCreator constructor(
     @JsonProperty("id", required = true) val id: Int,
     @JsonProperty("name_with_namespace", required = true) nameWithNameSpace: String,
-    @JsonProperty("http_url_to_repo") httpUrlToRepo: String?,
-    @JsonProperty("description") val description: String?
+    @JsonProperty("ssh_url_to_repo") val sshUrlToRepo: String,
+    @JsonProperty("http_url_to_repo") val httpUrlToRepo: String,
+    @JsonProperty("description") val description: String
 ) {
 
     val viewableProjectPath: String = nameWithNameSpace.replace(" / ", "/")
-    val httpProjectUrl: String? = httpUrlToRepo
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

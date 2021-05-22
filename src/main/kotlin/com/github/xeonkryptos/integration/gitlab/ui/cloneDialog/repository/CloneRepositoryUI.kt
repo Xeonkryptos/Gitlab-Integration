@@ -1,6 +1,5 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository
 
-import com.github.xeonkryptos.integration.gitlab.api.UserProvider
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEvent
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEventListener
@@ -41,7 +40,7 @@ import javax.swing.event.EventListenerList
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class CloneRepositoryUI(private val project: Project, userProvider: UserProvider) : Disposable {
+class CloneRepositoryUI(private val project: Project) : Disposable {
 
     private val eventListeners: EventListenerList = EventListenerList()
 
@@ -82,7 +81,7 @@ class CloneRepositoryUI(private val project: Project, userProvider: UserProvider
     }
 
     val repositoryPanel: JPanel
-    var controller: CloneRepositoryUIControl = DefaultCloneRepositoryUIControl(project, this, userProvider)
+    var controller: CloneRepositoryUIControl = DefaultCloneRepositoryUIControl(project, this)
 
     init {
         repositoryPanel = panel(LCFlags.fill) {

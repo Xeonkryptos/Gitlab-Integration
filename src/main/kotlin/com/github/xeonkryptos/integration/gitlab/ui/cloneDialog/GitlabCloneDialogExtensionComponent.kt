@@ -1,7 +1,5 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
 
-import com.github.xeonkryptos.integration.gitlab.api.GitlabUserProvider
-import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabUserApi
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabProject
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabAccountStateNotifier
@@ -17,6 +15,7 @@ import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.dvcs.ui.CloneDvcsValidationUtils
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComponentValidator
 import com.intellij.openapi.ui.ValidationInfo
@@ -47,9 +46,8 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         private val LOG = GitlabUtil.LOG
     }
 
-    private val gitlabApiManager = GitlabUserApi(project)
-    private val gitlabSettings = GitlabSettingsService.getInstance(project).state
-    private val authenticationManager = AuthenticationManager.getInstance(project)
+    private val gitlabSettings = project.service<GitlabSettingsService>().state
+    private val authenticationManager = service<AuthenticationManager>()
 
     private val wrapper: Wrapper = object : Wrapper() {
         override fun setContent(wrapped: JComponent?) {
@@ -61,7 +59,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     }.apply { border = JBEmptyBorder(UIUtil.PANEL_REGULAR_INSETS) }
 
     private val cloneRepositoryUI: CloneRepositoryUI by lazy {
-        CloneRepositoryUI(project, GitlabUserProvider(gitlabApiManager, gitlabSettings)).apply {
+        CloneRepositoryUI(project).apply {
             addClonePathEventListener(object : ClonePathEventListener {
                 override fun onClonePathChanged(event: ClonePathEvent) {
                     gitlabProject = event.gitlabProject
@@ -148,7 +146,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
 
     override fun doClone(checkoutListener: CheckoutProvider.Listener) {
         val localGitlabProject = gitlabProject
-        if (localGitlabProject?.httpProjectUrl != null) {
+        if (localGitlabProject?.httpUrlToRepo != null) {
             val parent = Paths.get(cloneRepositoryUI.directoryField.text).toAbsolutePath().parent
             val destinationValidation = CloneDvcsValidationUtils.createDestination(cloneRepositoryUI.directoryField.text)
             if (destinationValidation == null) {
@@ -164,7 +162,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
                     val directoryName = Paths.get(cloneRepositoryUI.directoryField.text).fileName.toString()
                     val parentDirectory = parent.toAbsolutePath().toString()
 
-                    GitCheckoutProvider.clone(project, Git.getInstance(), checkoutListener, destinationParent, localGitlabProject.httpProjectUrl, directoryName, parentDirectory)
+                    GitCheckoutProvider.clone(project, Git.getInstance(), checkoutListener, destinationParent, localGitlabProject.httpUrlToRepo, directoryName, parentDirectory)
                 }
             } else {
                 LOG.error("Unable to create destination directory", destinationValidation.message)
