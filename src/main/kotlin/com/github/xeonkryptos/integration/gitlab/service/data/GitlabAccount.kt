@@ -7,7 +7,7 @@ import com.intellij.util.xmlb.annotations.Transient
  * @author Xeonkryptos
  * @since 11.12.2020
  */
-data class GitlabAccount(@Volatile var username: String = "") {
+data class GitlabAccount(@Volatile var userId: Int? = null, @Volatile var username: String = "") {
 
     @Volatile
     @Transient
@@ -17,7 +17,7 @@ data class GitlabAccount(@Volatile var username: String = "") {
     @OptionTag
     var resolveOnlyOwnProjects: Boolean = false
 
-    constructor(gitlabHostSettings: GitlabHostSettings, username: String) : this(username) {
+    constructor(gitlabHostSettings: GitlabHostSettings, username: String) : this(null, username) {
         this.gitlabHostSettingsOwner = gitlabHostSettings
     }
 
@@ -34,19 +34,21 @@ data class GitlabAccount(@Volatile var username: String = "") {
 
     fun getGitlabHost(): String = gitlabHostSettingsOwner!!.gitlabHost
 
-    fun getNormalizeGitlabHost(): String = gitlabHostSettingsOwner!!.getNormalizeGitlabHost()
-
     fun getTargetGitlabHost(): String {
         val gitlabHost = getGitlabHost()
         return if (gitlabHost.endsWith("/")) gitlabHost.substring(0, gitlabHost.length - 1) else gitlabHost
     }
 
+    @Transient
+    internal fun getGitlabHostSettingsOwner() = gitlabHostSettingsOwner
+
+    @Transient
     internal fun setGitlabHostSettingsOwner(gitlabHostSettingsOwner: GitlabHostSettings) {
         this.gitlabHostSettingsOwner = gitlabHostSettingsOwner
     }
 
     fun deepCopy(): GitlabAccount {
-        val newGitlabAccount = GitlabAccount(username)
+        val newGitlabAccount = GitlabAccount(userId, username)
         newGitlabAccount.resolveOnlyOwnProjects = resolveOnlyOwnProjects
         return newGitlabAccount
     }

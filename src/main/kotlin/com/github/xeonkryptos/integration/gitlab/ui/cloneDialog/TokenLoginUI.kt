@@ -22,7 +22,8 @@ import javax.swing.event.DocumentEvent
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class TokenLoginUI @JvmOverloads constructor(project: Project, onLoginAction: ((gitlabLoginData: GitlabLoginData, gitlabHostTxtField: JBTextField) -> Unit)? = null) : Disposable {
+class TokenLoginUI @JvmOverloads constructor(project: Project, withPanelTitle: Boolean = true, onLoginAction: ((gitlabLoginData: GitlabLoginData, gitlabHostTxtField: JBTextField) -> Unit)? = null) :
+    Disposable {
 
     private val gitlabSettings = GitlabSettingsService.getInstance(project).state
 
@@ -59,7 +60,7 @@ class TokenLoginUI @JvmOverloads constructor(project: Project, onLoginAction: ((
     private var disableCertificateValidationManuallySet: Boolean = false
     var disableCertificateValidation: Boolean = false
 
-    val tokenLoginPanel: DialogPanel = panel(title = GitlabBundle.message("action.gitlab.accounts.addGitlabAccountWithToken.text")) {
+    val tokenLoginPanel: DialogPanel = panel(title = if (withPanelTitle) GitlabBundle.message("action.gitlab.accounts.addGitlabAccountWithToken.text") else null) {
         row(GitlabBundle.message("action.gitlab.accounts.addGitlabAccountWithToken.host")) {
             gitlabHostTxtField().applyIfEnabled().focused().withValidationOnApply { validateHostField() }
         }

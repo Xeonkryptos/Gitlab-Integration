@@ -5,7 +5,6 @@ import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.intellij.credentialStore.CredentialAttributes
 import com.intellij.credentialStore.generateServiceName
 import com.intellij.ide.passwordSafe.PasswordSafe
-import com.intellij.openapi.application.Application
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.util.messages.MessageBus
@@ -31,8 +30,7 @@ class AuthenticationManager private constructor(@Suppress("UNUSED_PARAMETER") pr
         }
     }
 
-    private val application: Application = ApplicationManager.getApplication()
-    private val messageBus: MessageBus = application.messageBus
+    private val messageBus: MessageBus = ApplicationManager.getApplication().messageBus
 
     fun storeAuthentication(gitlabAccount: GitlabAccount, gitlabAccessToken: String) {
         storeTokenFor(gitlabAccount, gitlabAccessToken)

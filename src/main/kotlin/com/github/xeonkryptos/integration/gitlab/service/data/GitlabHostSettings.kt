@@ -38,6 +38,12 @@ data class GitlabHostSettings(@Volatile var gitlabHost: String = "") {
         }
     }
 
+    internal fun addGitlabAccount(gitlabAccount: GitlabAccount) {
+        if (mutableGitlabAccounts.add(gitlabAccount)) {
+            gitlabAccount.setGitlabHostSettingsOwner(this)
+        }
+    }
+
     fun removeGitlabAccount(gitlabAccount: GitlabAccount, silent: Boolean = false) {
         mutableGitlabAccounts.remove(gitlabAccount)
 

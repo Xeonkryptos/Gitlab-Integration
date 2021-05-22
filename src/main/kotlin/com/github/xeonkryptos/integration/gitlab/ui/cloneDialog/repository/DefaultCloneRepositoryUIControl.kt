@@ -1,9 +1,9 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository
 
-import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabProjectsApi
-import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabUserApi
 import com.github.xeonkryptos.integration.gitlab.api.PagerProxy
 import com.github.xeonkryptos.integration.gitlab.api.UserProvider
+import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabProjectsApi
+import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabUserApi
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabProject
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabUser
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
@@ -21,7 +21,6 @@ import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ReloadDataEvent
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ReloadDataEventListener
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
-import com.github.xeonkryptos.integration.gitlab.util.invokeOnDispatchThread
 import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.application.ApplicationManager
@@ -42,14 +41,13 @@ import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.ImageIcon
 import javax.swing.JLabel
+import javax.swing.SwingUtilities
 
 /**
  * @author Xeonkryptos
  * @since 20.02.2021
  */
 class DefaultCloneRepositoryUIControl(private val project: Project, val ui: CloneRepositoryUI, private val userProvider: UserProvider) : CloneRepositoryUIControl {
-
-    private val applicationManager = ApplicationManager.getApplication()
 
     private val gitlabUserApi = GitlabUserApi(project)
     private val gitlabProjectsApi = GitlabProjectsApi(project)
@@ -143,7 +141,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, val ui: Clon
     }
 
     private fun initMessageListening(ui: CloneRepositoryUI) {
-        val connection = applicationManager.messageBus.connect(ui)
+        val connection = ApplicationManager.getApplication().messageBus.connect(ui)
         connection.subscribe(GitlabAccountStateNotifier.ACCOUNT_STATE_TOPIC, object : GitlabAccountStateNotifier {
             override fun onGitlabAccountCreated(gitlabAccount: GitlabAccount) {
                 if (authenticationManager.hasAuthenticationTokenFor(gitlabAccount)) {
@@ -152,20 +150,20 @@ class DefaultCloneRepositoryUIControl(private val project: Project, val ui: Clon
             }
 
             override fun onGitlabAccountDeleted(gitlabAccount: GitlabAccount) {
-                applicationManager.invokeOnDispatchThread(ui.repositoryPanel) { removeAccountProject(gitlabAccount) }
+                SwingUtilities.invokeLater { removeAccountProject(gitlabAccount) }
             }
         })
         connection.subscribe(GitlabLoginChangeNotifier.LOGIN_STATE_CHANGED_TOPIC, object : GitlabLoginChangeNotifier {
             override fun onSignIn(gitlabAccount: GitlabAccount) {
                 if (!authenticationManager.hasAuthenticationTokenFor(gitlabAccount)) {
-                    applicationManager.invokeOnDispatchThread(ui.repositoryPanel) { removeAccountProject(gitlabAccount) }
+                    SwingUtilities.invokeLater { removeAccountProject(gitlabAccount) }
                 } else {
                     reloadData(gitlabAccount)
                 }
             }
 
             override fun onSignOut(gitlabAccount: GitlabAccount) {
-                applicationManager.invokeOnDispatchThread(ui.repositoryPanel) { removeAccountProject(gitlabAccount) }
+                SwingUtilities.invokeLater { removeAccountProject(gitlabAccount) }
             }
         })
     }
@@ -181,7 +179,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, val ui: Clon
                 updatePagingPointers(localGitlabProjectsMap.values)
 
                 ui.repositoryModel.availableAccounts = gitlabAccounts
-                applicationManager.invokeLater { updateAccountProjects() }
+                SwingUtilities.invokeLater { updateAccountProjects() }
             }
         })
     }
@@ -197,7 +195,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, val ui: Clon
                 updatePagingPointers(localGitlabProjectsMap.values)
 
                 ui.repositoryModel.availableAccounts = gitlabAccounts
-                applicationManager.invokeLater { updateAccountProjects() }
+                SwingUtilities.invokeLater { updateAccountProjects() }
             }
         })
     }
@@ -206,7 +204,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, val ui: Clon
         val gitlabAccounts: List<GitlabAccount> = gitlabSettings.getAllGitlabAccountsBy { authenticationManager.hasAuthenticationTokenFor(it) }
         val gitlabUsersMap = gitlabUserApi.retrieveGitlabUsersFor(gitlabAccounts)
 
-        applicationManager.invokeLater {
+        SwingUtilities.invokeLater {
             val firstUserEntry = gitlabUsersMap.firstOrNull()
             if (firstUserEntry != null) {
                 addUserAccount(firstUserEntry.value)
@@ -221,7 +219,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, val ui: Clon
                 gitlabProjectsMap?.let {
                     it.values.forEach { pagerProxy -> pagerProxy.loadPreviousPage() }
                     updatePagingPointers(it.values)
-                    applicationManager.invokeLater { updateAccountProjects() }
+                    SwingUtilities.invokeLater { updateAccountProjects() }
                 }
             }
         })
@@ -233,7 +231,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, val ui: Clon
                 gitlabProjectsMap?.let {
                     it.values.forEach { pagerProxy -> pagerProxy.loadNextPage() }
                     updatePagingPointers(it.values)
-                    applicationManager.invokeLater { updateAccountProjects() }
+                    SwingUtilities.invokeLater { updateAccountProjects() }
                 }
             }
         })

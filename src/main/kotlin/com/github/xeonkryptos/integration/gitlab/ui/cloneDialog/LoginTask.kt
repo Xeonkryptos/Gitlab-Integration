@@ -4,7 +4,6 @@ import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabUserApi
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabUser
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
-import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabHostSettings
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
@@ -31,12 +30,11 @@ class LoginTask(
     private val authenticationManager = AuthenticationManager.getInstance(project)
     private val gitlabUserApi: GitlabUserApi = GitlabUserApi(project)
 
-    private val gitlabSettings = GitlabSettingsService.getInstance(project).state
-    private val gitlabHostSettings: GitlabHostSettings =
-        gitlabSettings.getOrCreateGitlabHostSettings(gitlabLoginData.gitlabHost).apply { disableSslVerification = gitlabLoginData.disableCertificateValidation }
+    private val gitlabHostSettings: GitlabHostSettings = GitlabHostSettings(gitlabLoginData.gitlabHost).apply { disableSslVerification = gitlabLoginData.disableCertificateValidation }
 
     @Volatile
-    private var gitlabAccount: GitlabAccount? = null
+    var gitlabAccount: GitlabAccount? = null
+        private set
 
     private var progressIndicator: ProgressIndicator? = null
 
@@ -52,7 +50,7 @@ class LoginTask(
             val gitlabUser: GitlabUser = gitlabUserApi.loadGitlabUser(gitlabHostSettings, gitlabLoginData.gitlabAccessToken)
 
             indicator.checkCanceled()
-            val localGitlabAccount = gitlabHostSettings.createGitlabAccount(gitlabUser.username)
+            val localGitlabAccount = gitlabHostSettings.createGitlabAccount(gitlabUser.username).apply { userId = gitlabUser.userId }
             gitlabAccount = localGitlabAccount
             authenticationManager.storeAuthentication(localGitlabAccount, gitlabLoginData.gitlabAccessToken)
 
@@ -77,7 +75,6 @@ class LoginTask(
             authenticationManager.deleteAuthenticationFor(it)
             it.delete()
         }
-        gitlabSettings.removeGitlabHostSettings(gitlabLoginData.gitlabHost)
     }
 
     override fun dispose() {

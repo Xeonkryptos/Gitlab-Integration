@@ -1,6 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.settings.ui
 
-import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle.message
+import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabLoginChangeNotifier
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.LoginTask
@@ -14,15 +14,18 @@ import javax.swing.SwingUtilities
 
 class AddGitlabSettingsEntryDialog(private val project: Project) : DialogWrapper(project, true, IdeModalityType.IDE) {
 
-    private val tokenLoginUI: TokenLoginUI = TokenLoginUI(project)
+    private val tokenLoginUI: TokenLoginUI = TokenLoginUI(project, withPanelTitle = false)
+
+    var gitlabAccount: GitlabAccount? = null
+        private set
 
     init {
         Disposer.register(disposable, tokenLoginUI)
         init()
-        title = "Add New Entry"
+        title = GitlabBundle.message("settings.general.dialog.add")
         horizontalStretch = 1.5f
         centerRelativeToParent()
-        setOKButtonText(message("accounts.log.in"))
+        setOKButtonText(GitlabBundle.message("accounts.log.in"))
 
         rootPane.defaultButton = getButton(okAction)
         ApplicationManager.getApplication().messageBus.connect(disposable).subscribe(GitlabLoginChangeNotifier.LOGIN_STATE_CHANGED_TOPIC, object : GitlabLoginChangeNotifier {

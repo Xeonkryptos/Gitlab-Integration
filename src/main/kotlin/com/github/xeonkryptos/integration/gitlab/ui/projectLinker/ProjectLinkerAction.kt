@@ -21,28 +21,29 @@ class ProjectLinkerAction : AnAction() {
     }
 
     override fun update(e: AnActionEvent) {
+        e.presentation.isVisible = true
         val project = e.getData(CommonDataKeys.PROJECT)
         // Sharing is technically possible if we have only 1 module or there is one module selected (out of a list of modules). Sharing of more than one module isn't supported.
-        e.presentation.isEnabledAndVisible = if (project != null) {
-            if (ModuleManager.getInstance(project).modules.size > 1) {
-                val selectedModule: Module? = LangDataKeys.MODULE.getData(e.dataContext)
-                selectedModule != null
-            } else project != defaultProject
+        e.presentation.isEnabled = if (project != null) {
+            if (ModuleManager.getInstance(project).modules.size > 1) LangDataKeys.MODULE.getData(e.dataContext) != null else project != defaultProject
         } else false
     }
 
     override fun actionPerformed(e: AnActionEvent) {
+        e.presentation.isVisible = true
         var selectedModule: Module? = LangDataKeys.MODULE.getData(e.dataContext)
-        val project = e.project
+        var project = e.project
         if (selectedModule == null && project != null) {
             selectedModule = ModuleManager.getInstance(project).modules[0]
         }
         if (selectedModule == null) {
-            // TODO: Show notification to user. An inconsistent/unexpected state detected. Can't share anything with a gitlab instance
+            e.presentation.isEnabled = false
             return
         }
-        // TODO: Check if module to share is already shared with a known gitlab instance. If yes, then choose another dialog to ask the user: "It is already shared. Do you want to share with another gitlab instance?"
-        val gitlabSettingsService = GitlabSettingsService.getInstance(project!!)
+        if (project == null) {
+            project = selectedModule.project
+        }
+        val gitlabSettingsService = GitlabSettingsService.getInstance(project)
         val allGitlabAccounts = gitlabSettingsService.state.getAllGitlabAccounts()
 
         val projectLinkerDialog = ProjectLinkerDialog(selectedModule, project)

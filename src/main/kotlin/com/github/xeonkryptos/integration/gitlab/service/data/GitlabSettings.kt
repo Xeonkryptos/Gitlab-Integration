@@ -11,9 +11,25 @@ data class GitlabSettings(@Volatile @XCollection(propertyElementName = "gitlabHo
         mutableGitlabHostSettings.values.forEach { it.onLoadingFinished() }
     }
 
+    @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN", "UNCHECKED_CAST")
     fun getOrCreateGitlabHostSettings(gitlabHost: String): GitlabHostSettings {
-        @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN", "UNCHECKED_CAST")
         return (mutableGitlabHostSettings as java.util.Map<String, GitlabHostSettings>).computeIfAbsent(gitlabHost) { GitlabHostSettings(it) }
+    }
+
+    fun registerGitlabAccount(gitlabAccount: GitlabAccount) {
+        val gitlabHost = gitlabAccount.getGitlabHost()
+
+        @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN", "UNCHECKED_CAST")
+        val gitlabHostSettings = (mutableGitlabHostSettings as java.util.Map<String, GitlabHostSettings>).computeIfAbsent(gitlabHost) { gitlabAccount.getGitlabHostSettingsOwner()!! }
+        if (gitlabHostSettings != gitlabAccount.getGitlabHostSettingsOwner()) {
+            gitlabHostSettings.addGitlabAccount(gitlabAccount)
+        }
+    }
+
+    fun updateWith(newSettings: GitlabSettings) {
+        gitlabHostSettings.filterKeys { newSettings.containsGitlabHostSettings(it) }.forEach { it.value.updateWith(newSettings.gitlabHostSettings[it.key]!!) }
+        newSettings.gitlabHostSettings.filterKeys { !gitlabHostSettings.containsKey(it) }.forEach { mutableGitlabHostSettings[it.key] = it.value }
+        gitlabHostSettings.keys.filter { !newSettings.containsGitlabHostSettings(it) }.forEach { mutableGitlabHostSettings.remove(it) }
     }
 
     fun isModified(gitlabSettings: GitlabSettings): Boolean {
@@ -24,7 +40,7 @@ data class GitlabSettings(@Volatile @XCollection(propertyElementName = "gitlabHo
     fun containsGitlabHostSettings(gitlabHost: String): Boolean = mutableGitlabHostSettings.containsKey(gitlabHost)
 
     fun removeGitlabHostSettings(gitlabHost: String) {
-        mutableGitlabHostSettings.remove(gitlabHost)
+        mutableGitlabHostSettings.remove(gitlabHost)?.gitlabAccounts?.forEach { it.delete() }
     }
 
     fun hasGitlabAccountBy(filter: (GitlabAccount) -> Boolean): Boolean = getFirstGitlabAccountBy(filter) != null

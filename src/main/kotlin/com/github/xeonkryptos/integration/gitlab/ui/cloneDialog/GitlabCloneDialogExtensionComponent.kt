@@ -15,7 +15,6 @@ import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ReloadDataEvent
 import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
-import com.github.xeonkryptos.integration.gitlab.util.invokeOnDispatchThread
 import com.intellij.dvcs.ui.CloneDvcsValidationUtils
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
@@ -36,6 +35,7 @@ import git4idea.commands.Git
 import java.nio.file.Paths
 import java.util.function.Supplier
 import javax.swing.JComponent
+import javax.swing.SwingUtilities
 
 /**
  * @author Xeonkryptos
@@ -75,7 +75,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     private val tokenLoginUI: TokenLoginUI = TokenLoginUI(project) { gitlabLoginData, gitlabHostTxtField ->
         LoginTask(project, gitlabLoginData) { result ->
             if (result == null) {
-                ApplicationManager.getApplication().invokeOnDispatchThread(wrapper) { switchToRepoScenery() }
+                SwingUtilities.invokeLater { switchToRepoScenery() }
             } else {
                 loginFailedValidationInfo = ValidationInfo(result, gitlabHostTxtField)
                 loginValidator.revalidate()
@@ -109,16 +109,17 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         val connection = ApplicationManager.getApplication().messageBus.connect(this)
         connection.subscribe(GitlabLoginChangeNotifier.LOGIN_STATE_CHANGED_TOPIC, object : GitlabLoginChangeNotifier {
             override fun onSignIn(gitlabAccount: GitlabAccount) {
-                ApplicationManager.getApplication().invokeOnDispatchThread(wrapper) { switchToRepoScenery() }
+                gitlabSettings.registerGitlabAccount(gitlabAccount)
+                SwingUtilities.invokeLater { switchToRepoScenery() }
             }
 
             override fun onSignOut(gitlabAccount: GitlabAccount) {
-                ApplicationManager.getApplication().invokeOnDispatchThread(wrapper) { switchToLoginScenery() }
+                SwingUtilities.invokeLater { switchToLoginScenery() }
             }
         })
         connection.subscribe(GitlabAccountStateNotifier.ACCOUNT_STATE_TOPIC, object : GitlabAccountStateNotifier {
             override fun onGitlabAccountDeleted(gitlabAccount: GitlabAccount) {
-                ApplicationManager.getApplication().invokeOnDispatchThread(wrapper) { switchToLoginScenery() }
+                SwingUtilities.invokeLater { switchToLoginScenery() }
             }
         })
     }

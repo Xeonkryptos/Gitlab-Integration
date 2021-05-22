@@ -13,6 +13,7 @@ import javax.imageio.ImageIO
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class GitlabUser @JsonCreator constructor(
+    @JsonProperty("id", required = true) val userId: Int,
     @JsonProperty("username", required = true) val username: String,
     @JsonProperty("name", required = true) val name: String,
     @JsonProperty("web_url", required = true) val server: String,
