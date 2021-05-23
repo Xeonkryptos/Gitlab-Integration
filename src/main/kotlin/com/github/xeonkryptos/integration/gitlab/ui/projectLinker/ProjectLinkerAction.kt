@@ -1,71 +1,56 @@
 package com.github.xeonkryptos.integration.gitlab.ui.projectLinker
 
+import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
-import com.intellij.openapi.actionSystem.AnAction
+import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.actionSystem.LangDataKeys
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.module.Module
-import com.intellij.openapi.module.ModuleManager
-import com.intellij.openapi.project.Project
-import com.intellij.openapi.project.ProjectManager
-import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.openapi.module.ModuleUtil
+import com.intellij.openapi.project.DumbAwareAction
 import git4idea.repo.GitRepositoryManager
-import java.nio.file.Path
 
-
-class ProjectLinkerAction : AnAction() {
-
-    companion object {
-        private val defaultProject: Project = service<ProjectManager>().defaultProject
-    }
+class ProjectLinkerAction : DumbAwareAction(GitlabBundle.message("share.action"), GitlabBundle.message("share.action.description"), GitlabUtil.GITLAB_ICON) {
 
     override fun update(e: AnActionEvent) {
-        e.presentation.isVisible = true
         val project = e.getData(CommonDataKeys.PROJECT)
-        // Sharing is technically possible if we have only 1 module or there is one module selected (out of a list of modules). Sharing of more than one module isn't supported.
-        e.presentation.isEnabled = if (project != null) {
-            if (ModuleManager.getInstance(project).modules.size > 1) LangDataKeys.MODULE.getData(e.dataContext) != null else project != defaultProject
-        } else false
+        e.presentation.isEnabledAndVisible = project != null && !project.isDefault
     }
 
     override fun actionPerformed(e: AnActionEvent) {
-        e.presentation.isVisible = true
-        var selectedModule: Module? = LangDataKeys.MODULE.getData(e.dataContext)
-        var project = e.project
-        if (selectedModule == null && project != null) {
-            selectedModule = ModuleManager.getInstance(project).modules[0]
-        }
-        if (selectedModule == null) {
-            e.presentation.isEnabled = false
-            return
-        }
-        if (project == null) {
-            project = selectedModule.project
-        }
-        val gitlabSettingsService = project.service<GitlabSettingsService>()
-        val allGitlabAccounts = gitlabSettingsService.state.getAllGitlabAccounts()
+        val project = e.getData(CommonDataKeys.PROJECT)
+        val file = e.getData(CommonDataKeys.VIRTUAL_FILE)
 
+        if (project == null || project.isDisposed) return
         service<FileDocumentManager>().saveAllDocuments()
 
-        val projectLinkerDialog = ProjectLinkerDialog(selectedModule, project)
+        val gitlabSettingsService = service<GitlabSettingsService>()
+        val allGitlabAccounts = gitlabSettingsService.state.getAllGitlabAccounts()
+
+        val module: Module? = if (file != null) ModuleUtil.findModuleForFile(file, project) else null
+        val projectLinkerDialog = ProjectLinkerDialog(project, module)
+
         projectLinkerDialog.fillWithDefaultValues(allGitlabAccounts)
         if (projectLinkerDialog.showAndGet()) {
-            val gitlabHost = projectLinkerDialog.selectedAccount!!.getTargetGitlabHost()
-            val gitlabHostWithoutProtocol = "${gitlabHost.replace(Regex("http?://"), "")}/"
-
-            val gitRepositoryManager = GitRepositoryManager.getInstance(project)
-            val moduleRootDirVirtualFile = VfsUtil.findFile(Path.of(projectLinkerDialog.moduleRootDir), false)!!
-            val foundGitRepository = gitRepositoryManager.getRepositoryForRootQuick(moduleRootDirVirtualFile)
+            val gitlabHostWithoutProtocol = "${projectLinkerDialog.selectedAccount!!.getGitlabDomain()}/"
+            val gitRepositoryManager = project.service<GitRepositoryManager>()
+            val foundGitRepository = gitRepositoryManager.getRepositoryForRootQuick(projectLinkerDialog.rootDirVirtualFile)
             if (foundGitRepository != null && foundGitRepository.remotes.asSequence().flatMap { it.pushUrls }.any { it.contains(gitlabHostWithoutProtocol) }) {
                 // TODO: Exists already on the gitlab. Ask, if it should be uploaded again.
             } else if (foundGitRepository != null) {
                 // TODO: Project isn't at the configured gitlab instance (at least, not yet after looking into configured/known remotes), but a git repository is available. So, simply upload it and add
                 //  it as a new remote.
             } else {
-                // TODO: Isn't a git repository. Create a git repository and upload it to gitlab after creating the project
+                CreateNewGitRepoAndShareTask(project,
+                                             projectLinkerDialog.projectName,
+                                             projectLinkerDialog.rootDirVirtualFile!!,
+                                             projectLinkerDialog.gitRemote,
+                                             projectLinkerDialog.selectedVisibility,
+                                             projectLinkerDialog.projectNamespaceId,
+                                             projectLinkerDialog.description,
+                                             projectLinkerDialog.selectedAccount!!).queue()
             }
         }
     }

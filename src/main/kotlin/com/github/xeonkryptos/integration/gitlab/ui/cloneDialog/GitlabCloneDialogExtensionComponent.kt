@@ -11,6 +11,7 @@ import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.Clone
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEvent
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ReloadDataEvent
+import com.github.xeonkryptos.integration.gitlab.util.GitlabNotificationIdsHolder
 import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.dvcs.ui.CloneDvcsValidationUtils
@@ -46,7 +47,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         private val LOG = GitlabUtil.LOG
     }
 
-    private val gitlabSettings = project.service<GitlabSettingsService>().state
+    private val gitlabSettings = service<GitlabSettingsService>().state
     private val authenticationManager = service<AuthenticationManager>()
 
     private val wrapper: Wrapper = object : Wrapper() {
@@ -70,7 +71,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     }
 
     private var gitlabProject: GitlabProject? = null
-    private val tokenLoginUI: TokenLoginUI = TokenLoginUI(project) { gitlabLoginData, gitlabHostTxtField ->
+    private val tokenLoginUI: TokenLoginUI = TokenLoginUI { gitlabLoginData, gitlabHostTxtField ->
         LoginTask(project, gitlabLoginData) { result ->
             if (result == null) {
                 SwingUtilities.invokeLater { switchToRepoScenery() }
@@ -157,7 +158,10 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
                 }
                 if (destinationParent == null) {
                     LOG.error("Clone Failed. Destination doesn't exist")
-                    GitlabNotifications.showError(project, GitlabBundle.message("clone.dialog.clone.failed"), GitlabBundle.message("clone.error.unable.to.find.dest"))
+                    GitlabNotifications.showError(project,
+                                                  GitlabNotificationIdsHolder.CLONE_UNABLE_TO_FIND_DESTINATION,
+                                                  GitlabBundle.message("clone.dialog.clone.failed"),
+                                                  GitlabBundle.message("clone.error.unable.to.find.dest"))
                 } else {
                     val directoryName = Paths.get(cloneRepositoryUI.directoryField.text).fileName.toString()
                     val parentDirectory = parent.toAbsolutePath().toString()
@@ -167,7 +171,10 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
                 }
             } else {
                 LOG.error("Unable to create destination directory", destinationValidation.message)
-                GitlabNotifications.showError(project, GitlabBundle.message("clone.dialog.clone.failed"), GitlabBundle.message("clone.error.unable.to.create.dest.dir"))
+                GitlabNotifications.showError(project,
+                                              GitlabNotificationIdsHolder.CLONE_UNABLE_TO_CREATE_DESTINATION_DIR,
+                                              GitlabBundle.message("clone.dialog.clone.failed"),
+                                              GitlabBundle.message("clone.error.unable.to.create.dest.dir"))
             }
         } else {
             LOG.error("Unable to construct clone destination. Missing host url and/or clone path")

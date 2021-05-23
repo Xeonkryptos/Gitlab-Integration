@@ -3,16 +3,19 @@ package com.github.xeonkryptos.integration.gitlab.ui.projectLinker
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabVisibility
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
+import com.intellij.openapi.components.service
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.module.Module
-import com.intellij.openapi.module.ModuleUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessModuleDir
+import com.intellij.openapi.project.guessProjectDir
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.ui.SimpleListCellRenderer
 import com.intellij.ui.layout.applyToComponent
@@ -20,51 +23,73 @@ import com.intellij.ui.layout.panel
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import git4idea.repo.GitRepositoryManager
 import java.nio.file.Path
+import java.util.regex.Pattern
 import javax.swing.JComponent
 import javax.swing.JList
 
-class ProjectLinkerDialog(private val selectedModule: Module, project: Project) : DialogWrapper(project) {
+class ProjectLinkerDialog(private val project: Project, private val module: Module?) : DialogWrapper(project) {
+
+    companion object {
+        private val GITLAB_REPO_PATTERN = Pattern.compile("[a-zA-Z0-9_.-]+")
+    }
 
     private val accountComboBoxModel: CollectionComboBoxModel<GitlabAccount> = CollectionComboBoxModel()
     private val visibilityComboBoxModel: CollectionComboBoxModel<GitlabVisibility> = CollectionComboBoxModel<GitlabVisibility>().apply {
         this.add(GitlabVisibility.values().toList())
     }
-    private lateinit var moduleRootDirTextField: TextFieldWithBrowseButton
+
+    private val projectRootManager: ProjectRootManager = ProjectRootManager.getInstance(project)
+
+    private lateinit var rootDirTextField: TextFieldWithBrowseButton
+
+    var projectNamespaceId: Long? = null
+        private set
 
     // Properties need to be public because they are accessed via property binding and exactly this binding can only access publicly available properties.
-    var projectPath: String = ""
     var projectName: String = ""
-    var userProject: Boolean = true
     var gitRemote: String = "origin"
-    var moduleRootDir: String = ""
     var description: String = ""
     var selectedAccount: GitlabAccount? = null
     var selectedVisibility: GitlabVisibility = GitlabVisibility.PRIVATE
 
+    @Suppress("MemberVisibilityCanBePrivate")
+    var projectNamespace: String = ""
+    @Suppress("MemberVisibilityCanBePrivate")
+    var rootDir: String = ""
+
+    var rootDirVirtualFile: VirtualFile? = null
+        private set
+
     private val centerPanel: DialogPanel by lazy {
-        panel(title = GitlabBundle.message("share.dialog.module.title")) {
+        panel {
             row(label = GitlabBundle.message("share.dialog.account.label")) {
-                comboBox(accountComboBoxModel, { selectedAccount }, { selectedAccount = it }).withValidationOnApply {
+                comboBox(accountComboBoxModel, { selectedAccount }, { selectedAccount = it }, object : SimpleListCellRenderer<GitlabAccount>() {
+                    override fun customize(list: JList<out GitlabAccount>, value: GitlabAccount?, index: Int, selected: Boolean, hasFocus: Boolean) {
+                        text = if (value != null) "${value.getGitlabDomain()}/${value.username}" else ""
+                    }
+                }).withValidationOnApply {
                     if (it.selectedItem == null) {
                         return@withValidationOnApply error(GitlabBundle.message("share.dialog.missing.account"))
                     }
                     return@withValidationOnApply null
-                }.applyToComponent { addItemListener { projectPath = "" } }.constraints(growX)
+                }.applyToComponent { addItemListener { projectNamespace = "" } }.constraints(growX)
                 link(text = GitlabBundle.message("share.dialog.manage.accounts.link")) {
                     TODO("Implement action")
                 }.withLargeLeftGap()
             }
-            row(label = GitlabBundle.message("share.dialog.project.path.label")) {
-                textField(::projectPath)
-                link(text = GitlabBundle.message("share.dialog.group.choose.link")) {
-                    TODO("Implement action")
+            row(label = GitlabBundle.message("share.dialog.project.namespace.label")) {
+                textField(::projectNamespace).constraints(growX).apply { enabled(false) }
+                link(text = GitlabBundle.message("share.dialog.project.namespace.choose.link")) {
+                    TODO("Implement action - Open another dialog with a list and lazy load of groups. An option to create a new group should be available, too")
                 }.withLargeLeftGap()
             }
             row(label = GitlabBundle.message("share.dialog.project.name.label")) {
                 textField(::projectName).withValidationOnApply {
-                    return@withValidationOnApply if (it.text.isBlank()) error(GitlabBundle.message("share.dialog.missing.project.name")) else null
+                    if (it.text.isBlank()) return@withValidationOnApply error(GitlabBundle.message("share.validation.no.repo.name"))
+                    if (!GITLAB_REPO_PATTERN.matcher(it.text).matches()) return@withValidationOnApply error(GitlabBundle.message("share.validation.invalid.repo.name"))
+                    return@withValidationOnApply null
                 }
-                checkBox(text = GitlabBundle.message("share.dialog.user.project.label"), ::userProject).withLargeLeftGap()
+                label("").visible(false)
             }
             row(label = GitlabBundle.message("share.dialog.project.visibility.label")) {
                 comboBox(visibilityComboBoxModel, ::selectedVisibility, renderer = object : SimpleListCellRenderer<GitlabVisibility?>() {
@@ -77,13 +102,13 @@ class ProjectLinkerDialog(private val selectedModule: Module, project: Project) 
             row(label = GitlabBundle.message("share.dialog.remote.label")) {
                 textField(::gitRemote).withValidationOnApply {
                     if (it.text.isBlank()) {
-                        return@withValidationOnApply error(GitlabBundle.message("share.dialog.missing.remote.name"))
+                        return@withValidationOnApply error(GitlabBundle.message("share.validation.no.remote.name"))
                     }
-                    val gitRepositoryManager = GitRepositoryManager.getInstance(project)
-                    val moduleRootDirFile = VfsUtil.findFile(Path.of(moduleRootDirTextField.text), false)
+                    val gitRepositoryManager = project.service<GitRepositoryManager>()
+                    val moduleRootDirFile = VfsUtil.findFile(Path.of(rootDirTextField.text), false)
                     val repositoryForRoot = gitRepositoryManager.getRepositoryForRootQuick(moduleRootDirFile)
                     if (repositoryForRoot?.remotes?.any { remote -> remote.name == it.text } == true) {
-                        return@withValidationOnApply error(GitlabBundle.message("share.dialog.invalid.remote.name.in.use"))
+                        return@withValidationOnApply error(GitlabBundle.message("share.error.remote.with.selected.name.exists"))
                     }
                     return@withValidationOnApply null
                 }
@@ -91,20 +116,16 @@ class ProjectLinkerDialog(private val selectedModule: Module, project: Project) 
                 // cells are rendered requiring the entire width. Means, the component above is taking the entire space and this doesn't look good.
                 label("").visible(false)
             }
-            row(label = GitlabBundle.message("share.dialog.module.root.dir")) {
-                moduleRootDirTextField = textFieldWithBrowseButton(
-                    ::moduleRootDir,
-                    browseDialogTitle = GitlabBundle.message("share.dialog.module.root.dir.browse.dialog.title"),
-                    project = project,
-                    fileChooserDescriptor = FileChooserDescriptor(false, true, false, false, false, false)
-                ).withValidationOnApply {
-                    if (it.text.isBlank()) {
-                        return@withValidationOnApply error(GitlabBundle.message("share.dialog.missing.module.root.dir"))
-                    }
-                    val moduleRootDirFile = VfsUtil.findFile(Path.of(it.text), false)
-                    if (moduleRootDirFile == null || !ModuleUtil.isModuleDir(selectedModule, moduleRootDirFile)) {
-                        return@withValidationOnApply error(GitlabBundle.message("share.dialog.invalid.module.root.dir"))
-                    }
+            row(label = GitlabBundle.message("share.dialog.root.dir")) {
+                rootDirTextField = textFieldWithBrowseButton(::rootDir,
+                                                             browseDialogTitle = GitlabBundle.message("share.dialog.root.dir.browse.dialog.title"),
+                                                             project = project,
+                                                             fileChooserDescriptor = FileChooserDescriptor(false, true, false, false, false, false)).withValidationOnApply {
+                    if (it.text.isBlank()) return@withValidationOnApply error(GitlabBundle.message("share.dialog.missing.module.root.dir"))
+
+                    val localChosenDir = VfsUtil.findFile(Path.of(it.text), false)
+                    if (localChosenDir == null || !projectRootManager.fileIndex.isInContent(localChosenDir)) return@withValidationOnApply error(GitlabBundle.message("share.dialog.invalid.module.root.dir"))
+                    rootDirVirtualFile = localChosenDir
                     return@withValidationOnApply null
                 }.component
                 label("").visible(false)
@@ -130,8 +151,8 @@ class ProjectLinkerDialog(private val selectedModule: Module, project: Project) 
 
     @RequiresEdt
     fun fillWithDefaultValues(gitlabAccounts: List<GitlabAccount>) {
-        projectName = selectedModule.name
-        moduleRootDir = selectedModule.guessModuleDir()?.path ?: ""
+        projectName = module?.name ?: project.name
+        rootDir = module?.guessModuleDir()?.path ?: project.guessProjectDir()?.path ?: ""
         accountComboBoxModel.removeAll()
         accountComboBoxModel.add(gitlabAccounts)
         if (gitlabAccounts.isNotEmpty()) {

@@ -84,8 +84,8 @@ data class GitlabHostSettings(@Volatile var gitlabHost: String = "") {
         }
     }
 
-    fun getNormalizeGitlabHost(): String {
-        var normalizedGitlabHost = gitlabHost.replace("https://", "").replace("http://", "")
+    fun getGitlabDomain(): String {
+        var normalizedGitlabHost = gitlabHost.replace(Regex("http.://"), "")
         if (normalizedGitlabHost.endsWith('/')) {
             normalizedGitlabHost = normalizedGitlabHost.substring(0, normalizedGitlabHost.length - 1)
         }

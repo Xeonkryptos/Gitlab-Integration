@@ -5,13 +5,12 @@ import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabHostSettings
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.components.service
-import com.intellij.openapi.project.Project
 
 /**
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class GitlabUserApi(project: Project) : BaseGitlabApi(project) {
+class GitlabUserApi : BaseGitlabApi() {
 
     private companion object {
         private val LOG = GitlabUtil.LOG

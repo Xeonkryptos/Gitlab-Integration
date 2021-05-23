@@ -14,7 +14,7 @@ import javax.swing.SwingUtilities
 
 class AddGitlabSettingsEntryDialog(private val project: Project) : DialogWrapper(project, true, IdeModalityType.IDE) {
 
-    private val tokenLoginUI: TokenLoginUI = TokenLoginUI(project, withPanelTitle = false)
+    private val tokenLoginUI: TokenLoginUI = TokenLoginUI(withPanelTitle = false)
 
     var gitlabAccount: GitlabAccount? = null
         private set

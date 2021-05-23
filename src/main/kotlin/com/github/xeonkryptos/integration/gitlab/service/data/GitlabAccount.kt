@@ -34,6 +34,8 @@ data class GitlabAccount(@Volatile var userId: Long? = null, @Volatile var usern
 
     fun getGitlabHost(): String = gitlabHostSettingsOwner!!.gitlabHost
 
+    fun getGitlabDomain(): String = gitlabHostSettingsOwner!!.getGitlabDomain()
+
     fun getTargetGitlabHost(): String {
         val gitlabHost = getGitlabHost()
         return if (gitlabHost.endsWith("/")) gitlabHost.substring(0, gitlabHost.length - 1) else gitlabHost

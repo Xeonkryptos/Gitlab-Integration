@@ -7,7 +7,6 @@ import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabProject
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabVisibility
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
-import com.intellij.openapi.project.Project
 import jakarta.ws.rs.client.Entity
 import jakarta.ws.rs.core.GenericType
 import jakarta.ws.rs.core.Response
@@ -15,7 +14,7 @@ import jakarta.ws.rs.core.UriBuilder
 import java.net.URI
 import org.glassfish.hk2.utilities.reflection.ParameterizedTypeImpl
 
-class GitlabProjectsApi(project: Project) : BaseGitlabApi(project) {
+class GitlabProjectsApi : BaseGitlabApi() {
 
     companion object {
         private val LOG = GitlabUtil.LOG
@@ -61,7 +60,7 @@ class GitlabProjectsApi(project: Project) : BaseGitlabApi(project) {
                          visibility: GitlabVisibility? = GitlabVisibility.PRIVATE,
                          namespaceId: Long? = null,
                          description: String? = null,
-                         gitlabAccount: GitlabAccount): GitlabProject? {
+                         gitlabAccount: GitlabAccount): GitlabProject {
         val baseUri = createNewProjectUrl(gitlabAccount)
         val gitlabClient = getGitlabApiClient(gitlabAccount)
         val enrichedRequestWithToken = authenticationManager.enrichRequestWithToken(gitlabClient.target(baseUri).request(), gitlabAccount)

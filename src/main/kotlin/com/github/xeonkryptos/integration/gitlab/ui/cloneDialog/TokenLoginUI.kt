@@ -23,10 +23,9 @@ import javax.swing.event.DocumentEvent
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class TokenLoginUI @JvmOverloads constructor(project: Project, withPanelTitle: Boolean = true, onLoginAction: ((gitlabLoginData: GitlabLoginData, gitlabHostTxtField: JBTextField) -> Unit)? = null) :
-    Disposable {
+class TokenLoginUI @JvmOverloads constructor(withPanelTitle: Boolean = true, onLoginAction: ((gitlabLoginData: GitlabLoginData, gitlabHostTxtField: JBTextField) -> Unit)? = null) : Disposable {
 
-    private val gitlabSettings = project.service<GitlabSettingsService>().state
+    private val gitlabSettings = service<GitlabSettingsService>().state
 
     val gitlabHostTxtField: JBTextField = JBTextField().apply {
         document.addDocumentListener(object : DocumentAdapter() {

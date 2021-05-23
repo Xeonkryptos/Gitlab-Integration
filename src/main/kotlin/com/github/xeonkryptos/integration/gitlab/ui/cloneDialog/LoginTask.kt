@@ -20,16 +20,15 @@ import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import java.util.function.Consumer
 
-class LoginTask(
-    project: Project, private val gitlabLoginData: GitlabLoginData, private val loginNotificationListener: Consumer<String?>? = null
-) : Task.Backgroundable(project, GitlabBundle.message("action.gitlab.accounts.user.information.download"), true, ALWAYS_BACKGROUND), Disposable {
+class LoginTask(project: Project, private val gitlabLoginData: GitlabLoginData, private val loginNotificationListener: Consumer<String?>? = null) :
+    Task.Backgroundable(project, GitlabBundle.message("action.gitlab.accounts.user.information.download"), true, ALWAYS_BACKGROUND), Disposable {
 
     private companion object {
         private val LOG = GitlabUtil.LOG
     }
 
-    private val authenticationManager = service<AuthenticationManager>()
-    private val gitlabUserApi: GitlabUserApi = project.service()
+    private val authenticationManager: AuthenticationManager = service()
+    private val gitlabUserApi: GitlabUserApi = service()
 
     private val gitlabHostSettings: GitlabHostSettings = GitlabHostSettings(gitlabLoginData.gitlabHost).apply { disableSslVerification = gitlabLoginData.disableCertificateValidation }
 

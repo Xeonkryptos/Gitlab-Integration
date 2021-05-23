@@ -16,7 +16,7 @@ import jakarta.ws.rs.core.Response
 import jakarta.ws.rs.core.UriBuilder
 import org.glassfish.hk2.utilities.reflection.ParameterizedTypeImpl
 
-class GitlabGroupsApi(project: Project) : BaseGitlabApi(project) {
+class GitlabGroupsApi : BaseGitlabApi() {
 
     companion object {
         private val GITLAB_GROUPS_GENERIC_TYPE: GenericType<List<GitlabGroup>> = GenericType<List<GitlabGroup>>(ParameterizedTypeImpl(List::class.java, GitlabGroup::class.java))

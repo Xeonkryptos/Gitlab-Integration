@@ -29,7 +29,7 @@ class GitlabIntegrationSettingsForm(private val project: Project) : Disposable {
         get() = gitlabHostsTableModel.isModified()
 
     init {
-        val settings = project.service<GitlabSettingsService>().state
+        val settings = service<GitlabSettingsService>().state
         gitlabHostsTableModel = GitlabHostsTableModel(settings)
         Disposer.register(this, gitlabHostsTableModel)
 

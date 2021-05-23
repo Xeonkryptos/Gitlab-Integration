@@ -49,9 +49,9 @@ import javax.swing.SwingUtilities
  */
 class DefaultCloneRepositoryUIControl(private val project: Project, val ui: CloneRepositoryUI) : CloneRepositoryUIControl {
 
-    private val gitlabUserApi = project.service<GitlabUserApi>()
-    private val gitlabProjectsApi = project.service<GitlabProjectsApi>()
-    private val gitlabSettings = project.service<GitlabSettingsService>().state
+    private val gitlabUserApi = service<GitlabUserApi>()
+    private val gitlabProjectsApi = service<GitlabProjectsApi>()
+    private val gitlabSettings = service<GitlabSettingsService>().state
     private val authenticationManager = service<AuthenticationManager>()
 
     @Volatile
@@ -107,8 +107,8 @@ class DefaultCloneRepositoryUIControl(private val project: Project, val ui: Clon
     private fun showPopupMenu() {
         val menuItems = mutableListOf<AccountMenuItem>()
 
-        val settingsService = project.service<GitlabSettingsService>()
-        val gitlabUsersPerAccount = project.service<GitlabUserApi>().retrieveGitlabUsersFor(settingsService.state.getAllGitlabAccounts())
+        val settingsService = service<GitlabSettingsService>()
+        val gitlabUsersPerAccount = service<GitlabUserApi>().retrieveGitlabUsersFor(settingsService.state.getAllGitlabAccounts())
         for ((index, userEntry) in gitlabUsersPerAccount.entries.withIndex()) {
             val accountTitle = userEntry.value.name
 

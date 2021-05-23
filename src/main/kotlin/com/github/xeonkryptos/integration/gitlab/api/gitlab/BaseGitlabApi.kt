@@ -7,9 +7,9 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import jakarta.ws.rs.client.Client
 
-sealed class BaseGitlabApi(project: Project) {
+sealed class BaseGitlabApi {
 
-    val gitlabSettingsService = project.service<GitlabSettingsService>()
+    val gitlabSettingsService = service<GitlabSettingsService>()
     val authenticationManager = service<AuthenticationManager>()
 
     protected fun getGitlabApiClient(gitlabAccount: GitlabAccount): Client {
