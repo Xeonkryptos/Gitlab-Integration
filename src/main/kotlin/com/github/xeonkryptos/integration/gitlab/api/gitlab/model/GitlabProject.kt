@@ -3,6 +3,7 @@ package com.github.xeonkryptos.integration.gitlab.api.gitlab.model
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 
 /**
  * @author Xeonkryptos
@@ -18,6 +19,9 @@ class GitlabProject @JsonCreator constructor(
 ) {
 
     val viewableProjectPath: String = nameWithNameSpace.replace(" / ", "/")
+
+    lateinit var gitlabAccount: GitlabAccount
+        internal set
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

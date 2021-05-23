@@ -22,8 +22,8 @@ class GitlabUserApi(project: Project) : BaseGitlabApi(project) {
         gitlabAccounts.filter { authenticationManager.hasAuthenticationTokenFor(it) }.forEach { gitlabAccount ->
             try {
                 val gitlabClient = getGitlabApiClient(gitlabAccount)
-                val gitlabAccessToken = getToken(gitlabAccount)
-                val invocation = gitlabClient.target(gitlabAccount.getGitlabHost()).path("api/v4/user").request().header("PRIVATE-TOKEN", gitlabAccessToken).buildGet()
+                val baseRequest = gitlabClient.target(gitlabAccount.getGitlabHost()).path("api/v4/user").request()
+                val invocation = authenticationManager.enrichRequestWithToken(baseRequest, gitlabAccount).buildGet()
                 users[gitlabAccount] = invocation.invoke(GitlabUser::class.java)
             } catch (e: Exception) {
                 LOG.warn("Failed to retrieve user information for gitlab account $gitlabAccount", e)

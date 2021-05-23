@@ -7,7 +7,7 @@ import com.intellij.util.xmlb.annotations.Transient
  * @author Xeonkryptos
  * @since 11.12.2020
  */
-data class GitlabAccount(@Volatile var userId: Long? = null, @Volatile var username: String = "", @Volatile var pushWithSSH: Boolean = false) {
+data class GitlabAccount(@Volatile var userId: Long? = null, @Volatile var username: String = "", @Volatile var useSSH: Boolean = false) {
 
     @Volatile
     @Transient
@@ -48,7 +48,7 @@ data class GitlabAccount(@Volatile var userId: Long? = null, @Volatile var usern
     }
 
     fun deepCopy(): GitlabAccount {
-        val newGitlabAccount = GitlabAccount(userId, username, pushWithSSH)
+        val newGitlabAccount = GitlabAccount(userId, username, useSSH)
         newGitlabAccount.resolveOnlyOwnProjects = resolveOnlyOwnProjects
         return newGitlabAccount
     }

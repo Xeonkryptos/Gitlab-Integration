@@ -146,7 +146,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
 
     override fun doClone(checkoutListener: CheckoutProvider.Listener) {
         val localGitlabProject = gitlabProject
-        if (localGitlabProject?.httpUrlToRepo != null) {
+        if (localGitlabProject != null) {
             val parent = Paths.get(cloneRepositoryUI.directoryField.text).toAbsolutePath().parent
             val destinationValidation = CloneDvcsValidationUtils.createDestination(cloneRepositoryUI.directoryField.text)
             if (destinationValidation == null) {
@@ -162,7 +162,8 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
                     val directoryName = Paths.get(cloneRepositoryUI.directoryField.text).fileName.toString()
                     val parentDirectory = parent.toAbsolutePath().toString()
 
-                    GitCheckoutProvider.clone(project, Git.getInstance(), checkoutListener, destinationParent, localGitlabProject.httpUrlToRepo, directoryName, parentDirectory)
+                    val cloneUrl = if (localGitlabProject.gitlabAccount.useSSH) localGitlabProject.sshUrlToRepo else localGitlabProject.httpUrlToRepo
+                    GitCheckoutProvider.clone(project, Git.getInstance(), checkoutListener, destinationParent, cloneUrl, directoryName, parentDirectory)
                 }
             } else {
                 LOG.error("Unable to create destination directory", destinationValidation.message)

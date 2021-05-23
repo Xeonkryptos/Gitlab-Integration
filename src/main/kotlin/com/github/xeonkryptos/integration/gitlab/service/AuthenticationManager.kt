@@ -7,6 +7,7 @@ import com.intellij.credentialStore.generateServiceName
 import com.intellij.ide.passwordSafe.PasswordSafe
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.util.messages.MessageBus
+import jakarta.ws.rs.client.Invocation
 
 /**
  * @author Xeonkryptos
@@ -30,7 +31,9 @@ class AuthenticationManager {
 
     fun hasAuthenticationTokenFor(gitlabAccount: GitlabAccount) = getAuthenticationTokenFor(gitlabAccount) != null
 
-    fun getAuthenticationTokenFor(gitlabAccount: GitlabAccount): String? {
+    fun enrichRequestWithToken(requestBuilder: Invocation.Builder, gitlabAccount: GitlabAccount): Invocation.Builder = requestBuilder.header("PRIVATE-TOKEN", getAuthenticationTokenFor(gitlabAccount))
+
+    private fun getAuthenticationTokenFor(gitlabAccount: GitlabAccount): String? {
         val credentialAttributes: CredentialAttributes = createTokenCredentialAttributes(gitlabAccount)
         return PasswordSafe.instance.getPassword(credentialAttributes)
     }

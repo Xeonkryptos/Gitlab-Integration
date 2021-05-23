@@ -41,13 +41,11 @@ class GitlabGroupsApi(project: Project) : BaseGitlabApi(project) {
                 baseUriBuilder = baseUriBuilder.queryParam("search", searchText)
             }
             val baseUri = baseUriBuilder.build()
-            return getToken(gitlabAccount)?.let {
-                val gitlabClient = getGitlabApiClient(gitlabAccount)
-                val pager = Pager(baseUri, it, GITLAB_GROUPS_GENERIC_TYPE, gitlabClient)
-                val pagerProxy = PagerProxy(pager)
-                pagerProxy.loadFirstPage()
-                return@let pagerProxy
-            }
+            val gitlabClient = getGitlabApiClient(gitlabAccount)
+            val pager = Pager(baseUri, gitlabAccount, GITLAB_GROUPS_GENERIC_TYPE, gitlabClient)
+            val pagerProxy = PagerProxy(pager)
+            pagerProxy.loadFirstPage()
+            return pagerProxy
         }
         return null
     }
@@ -56,25 +54,22 @@ class GitlabGroupsApi(project: Project) : BaseGitlabApi(project) {
     fun createNewGroup(groupName: String, parentId: Int? = null, description: String? = null, visibility: GitlabVisibility? = null, gitlabAccount: GitlabAccount): GitlabGroup? {
         if (authenticationManager.hasAuthenticationTokenFor(gitlabAccount)) {
             val baseUri = UriBuilder.fromUri(gitlabAccount.getTargetGitlabHost()).path("api/v4/groups").build()
-            getToken(gitlabAccount)?.let {
-                val gitlabClient = getGitlabApiClient(gitlabAccount)
-                val pathName = StringUtil.collapseWhiteSpace(groupName).lowercase().replace(Regex("\\s+"), "-")
-                val response = gitlabClient.target(baseUri).request().post(Entity.json(CreateGroupRequest(groupName, pathName, parentId, visibility?.name?.lowercase(), description)))
-                if (response.statusInfo == Response.Status.CREATED) {
-                    return@let response.readEntity(GitlabGroup::class.java)
-                }
-                val receivedErrorMessage = response.readEntity(String::class.java)
-                throw UnexpectedResponseException(receivedErrorMessage)
+            val gitlabClient = getGitlabApiClient(gitlabAccount)
+            val pathName = StringUtil.collapseWhiteSpace(groupName).lowercase().replace(Regex("\\s+"), "-")
+            val enrichedRequestWithToken = authenticationManager.enrichRequestWithToken(gitlabClient.target(baseUri).request(), gitlabAccount)
+            val response = enrichedRequestWithToken.post(Entity.json(CreateGroupRequest(groupName, pathName, parentId, visibility?.name?.lowercase(), description)))
+            if (response.statusInfo == Response.Status.CREATED) {
+                return response.readEntity(GitlabGroup::class.java)
             }
+            val receivedErrorMessage = response.readEntity(String::class.java)
+            throw UnexpectedResponseException(receivedErrorMessage)
         }
         return null
     }
 
-    private data class CreateGroupRequest(
-        @JsonProperty("name") val groupName: String,
-        @JsonProperty("path") val path: String,
-        @JsonProperty("parent_id") val parentId: Int?,
-        @JsonProperty("visibility") val visibility: String?,
-        @JsonProperty("description") val description: String?
-    )
+    private data class CreateGroupRequest(@JsonProperty("name") val groupName: String,
+                                          @JsonProperty("path") val path: String,
+                                          @JsonProperty("parent_id") val parentId: Int?,
+                                          @JsonProperty("visibility") val visibility: String?,
+                                          @JsonProperty("description") val description: String?)
 }

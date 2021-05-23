@@ -16,11 +16,4 @@ sealed class BaseGitlabApi(project: Project) {
         val targetGitlabHost = gitlabAccount.getTargetGitlabHost()
         return service<GitlabClient>().getGitlabApiClient(gitlabSettingsService.state.gitlabHostSettings[targetGitlabHost])
     }
-
-    protected fun getToken(gitlabAccount: GitlabAccount): String? {
-        val username = gitlabAccount.username
-        val gitlabAccessToken by lazy { authenticationManager.getAuthenticationTokenFor(gitlabAccount) }
-        if (gitlabAccessToken != null) return gitlabAccessToken
-        throw IllegalArgumentException("Cannot access gitlab instance for host ${gitlabAccount.getTargetGitlabHost()} with user $username. Missing access token to authenticate")
-    }
 }
