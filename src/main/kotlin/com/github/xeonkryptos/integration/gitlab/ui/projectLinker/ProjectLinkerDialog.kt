@@ -162,4 +162,7 @@ class ProjectLinkerDialog(private val project: Project, private val module: Modu
         centerPanel.reset()
         pack()
     }
+
+    fun constructProjectLinkerConfiguration(): ProjectLinkingConfiguration =
+        ProjectLinkingConfiguration(projectName, rootDirVirtualFile!!, gitRemote, selectedVisibility, projectNamespaceId, description, selectedAccount!!)
 }

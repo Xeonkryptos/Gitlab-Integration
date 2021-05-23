@@ -37,20 +37,13 @@ class ProjectLinkerAction : DumbAwareAction(GitlabBundle.message("share.action")
             val gitlabHostWithoutProtocol = "${projectLinkerDialog.selectedAccount!!.getGitlabDomain()}/"
             val gitRepositoryManager = project.service<GitRepositoryManager>()
             val foundGitRepository = gitRepositoryManager.getRepositoryForRootQuick(projectLinkerDialog.rootDirVirtualFile)
+            val projectLinkerConfiguration = projectLinkerDialog.constructProjectLinkerConfiguration()
             if (foundGitRepository != null && foundGitRepository.remotes.asSequence().flatMap { it.pushUrls }.any { it.contains(gitlabHostWithoutProtocol) }) {
                 // TODO: Exists already on the gitlab. Ask, if it should be uploaded again.
             } else if (foundGitRepository != null) {
-                // TODO: Project isn't at the configured gitlab instance (at least, not yet after looking into configured/known remotes), but a git repository is available. So, simply upload it and add
-                //  it as a new remote.
+                UploadGitRepoAndShareTask(project, projectLinkerConfiguration, foundGitRepository).queue()
             } else {
-                CreateNewGitRepoAndShareTask(project,
-                                             projectLinkerDialog.projectName,
-                                             projectLinkerDialog.rootDirVirtualFile!!,
-                                             projectLinkerDialog.gitRemote,
-                                             projectLinkerDialog.selectedVisibility,
-                                             projectLinkerDialog.projectNamespaceId,
-                                             projectLinkerDialog.description,
-                                             projectLinkerDialog.selectedAccount!!).queue()
+                CreateNewGitRepoAndShareTask(project, projectLinkerConfiguration).queue()
             }
         }
     }
