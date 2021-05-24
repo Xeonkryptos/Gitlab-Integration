@@ -23,7 +23,7 @@ import javax.swing.event.ListDataListener
  * and not manipulating the internal model (positions, etc). Therefore, the enabled state is typically verified with the selection state. This behaviour is avoided, if custom extra actions are used,
  * that are implementing the interface mentioned above. Every other button behaves as the default ones -> only work with the internal model.
  */
-internal class CustomListToolbarDecorator<T>(private val myList: JList<T>, private val myEditableModel: EditableModel?) : ToolbarDecorator() {
+internal class CustomListToolbarDecorator<T>(private val myList: JList<T>, private val myEditableModel: EditableModel? = null) : ToolbarDecorator() {
 
     private val myExtraActions: MutableList<AnActionButton> = SmartList()
 

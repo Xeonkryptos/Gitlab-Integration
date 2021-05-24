@@ -3,31 +3,26 @@ package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEvent
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEventListener
-import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.GlobalSearchTextEvent
-import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.GlobalSearchTextEventListener
-import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.PagingEvent
-import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.PagingEventListener
-import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ReloadDataEvent
-import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ReloadDataEventListener
+import com.github.xeonkryptos.integration.gitlab.ui.general.event.GlobalSearchTextEvent
+import com.github.xeonkryptos.integration.gitlab.ui.general.event.GlobalSearchTextEventListener
+import com.github.xeonkryptos.integration.gitlab.ui.general.event.PagingEvent
+import com.github.xeonkryptos.integration.gitlab.ui.general.event.PagingEventListener
+import com.github.xeonkryptos.integration.gitlab.ui.general.event.ReloadDataEvent
+import com.github.xeonkryptos.integration.gitlab.ui.general.event.ReloadDataEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.general.CustomListToolbarDecorator
-import com.github.xeonkryptos.integration.gitlab.ui.general.ExtraActionButton
+import com.github.xeonkryptos.integration.gitlab.ui.general.NextActionButton
+import com.github.xeonkryptos.integration.gitlab.ui.general.PreviousActionButton
 import com.intellij.dvcs.repo.ClonePathProvider
 import com.intellij.dvcs.ui.DvcsBundle
 import com.intellij.dvcs.ui.SelectChildTextFieldWithBrowseButton
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.ShortcutSet
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.project.Project
-import com.intellij.ui.AnActionButton
-import com.intellij.ui.CommonActionsPanel
-import com.intellij.ui.CommonActionsPanel.Buttons
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.KeyStrokeAdapter
 import com.intellij.ui.layout.ComponentPredicate
 import com.intellij.ui.layout.LCFlags
 import com.intellij.ui.layout.panel
-import com.intellij.util.IconUtil
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.cloneDialog.ListWithSearchComponent
 import git4idea.remote.GitRememberedInputs
@@ -46,7 +41,7 @@ class CloneRepositoryUI(private val project: Project) : Disposable {
 
     private val eventListeners: EventListenerList = EventListenerList()
 
-    internal val repositoryModel: DefaultCloneRepositoryUIModel = DefaultCloneRepositoryUIModel()
+    internal val repositoryModel: CloneRepositoryUIModel = DefaultCloneRepositoryUIModel()
     internal val usersPanel: JPanel = JPanel(FlowLayout(FlowLayout.LEADING, JBUI.scale(1), 0))
     internal val listWithSearchComponent: ListWithSearchComponent<GitlabProjectListItem> =
         ListWithSearchComponent(repositoryModel, GitlabProjectListCellRenderer { repositoryModel.availableAccounts }).apply {
@@ -65,13 +60,13 @@ class CloneRepositoryUI(private val project: Project) : Disposable {
             })
         }
     private val repositoryListPanel: JPanel by lazy {
-        CustomListToolbarDecorator(listWithSearchComponent.list, null).initPosition()
+        CustomListToolbarDecorator(listWithSearchComponent.list).initPosition()
             .disableUpAction()
             .disableDownAction()
             .disableAddAction()
             .disableRemoveAction()
-            .addExtraAction(PreviousActionButton())
-            .addExtraAction(NextActionButton())
+            .addExtraAction(PreviousActionButton(GitlabBundle.message("clone.page.previous"), { repositoryModel.hasPreviousRepositories }, { fireOnPreviousPagingEvent(PagingEvent(it)) }))
+            .addExtraAction(NextActionButton(GitlabBundle.message("clone.page.next"), { repositoryModel.hasNextRepositories }, { fireOnNextPagingEvent(PagingEvent(it)) }))
             .createPanel()
     }
 
@@ -90,18 +85,20 @@ class CloneRepositoryUI(private val project: Project) : Disposable {
             row {
                 cell(isFullWidth = true) {
                     listWithSearchComponent.searchField(growX, pushX)
-                    button(GitlabBundle.message("button.globalSearch")) {}.enableIf(object : ComponentPredicate() {
+                    button(GitlabBundle.message("button.globalSearch")) {
+                        val searchText: String? = listWithSearchComponent.searchField.text
+                        if (searchText?.isNotBlank() == true) {
+                            fireGlobalSearchTextChanged(GlobalSearchTextEvent(this, searchText))
+                        }
+                    }.enableIf(object : ComponentPredicate() {
                         override fun addListener(listener: (Boolean) -> Unit) {
                             listWithSearchComponent.searchField.addDocumentListener(object : DocumentAdapter() {
                                 override fun textChanged(e: DocumentEvent) {
-                                    listener.invoke(invoke())
+                                    listener(invoke())
 
                                     val searchText: String? = listWithSearchComponent.searchField.text
-                                    val globalSearchTextEvent = GlobalSearchTextEvent(this, searchText)
-                                    if (searchText?.isNotBlank() == true) {
-                                        fireGlobalSearchTextChanged(globalSearchTextEvent)
-                                    } else {
-                                        fireGlobalSearchTextDeleted(globalSearchTextEvent)
+                                    if (searchText?.isNotBlank() != true) {
+                                        fireGlobalSearchTextDeleted(GlobalSearchTextEvent(this, searchText))
                                     }
                                 }
                             })
@@ -125,20 +122,26 @@ class CloneRepositoryUI(private val project: Project) : Disposable {
 
     fun addReloadDataEventListener(listener: ReloadDataEventListener) = eventListeners.add(ReloadDataEventListener::class.java, listener)
 
+    @Suppress("unused")
     fun removeReloadDataEventListener(listener: ReloadDataEventListener) = eventListeners.remove(ReloadDataEventListener::class.java, listener)
 
+    @Suppress("MemberVisibilityCanBePrivate")
     fun fireClonePathChangedEvent(event: ClonePathEvent) = eventListeners.getListeners(ClonePathEventListener::class.java).forEach { listener -> listener.onClonePathChanged(event) }
 
     fun addClonePathEventListener(listener: ClonePathEventListener) = eventListeners.add(ClonePathEventListener::class.java, listener)
 
+    @Suppress("unused")
     fun removeClonePathEventListener(listener: ClonePathEventListener) = eventListeners.remove(ClonePathEventListener::class.java, listener)
 
+    @Suppress("MemberVisibilityCanBePrivate")
     fun fireOnPreviousPagingEvent(event: PagingEvent) = eventListeners.getListeners(PagingEventListener::class.java).forEach { listener -> listener.onPreviousPage(event) }
 
+    @Suppress("MemberVisibilityCanBePrivate")
     fun fireOnNextPagingEvent(event: PagingEvent) = eventListeners.getListeners(PagingEventListener::class.java).forEach { listener -> listener.onNextPage(event) }
 
     fun addPagingEventListener(listener: PagingEventListener) = eventListeners.add(PagingEventListener::class.java, listener)
 
+    @Suppress("unused")
     fun removePagingEventListener(listener: PagingEventListener) = eventListeners.remove(PagingEventListener::class.java, listener)
 
     fun fireGlobalSearchTextChanged(event: GlobalSearchTextEvent) =
@@ -149,43 +152,6 @@ class CloneRepositoryUI(private val project: Project) : Disposable {
 
     fun addGlobalSearchTextEventListener(listener: GlobalSearchTextEventListener) = eventListeners.add(GlobalSearchTextEventListener::class.java, listener)
 
+    @Suppress("unused")
     fun removeGlobalSearchTextEventListener(listener: GlobalSearchTextEventListener) = eventListeners.remove(GlobalSearchTextEventListener::class.java, listener)
-
-    private inner class PreviousActionButton : AnActionButton(GitlabBundle.message("clone.page.previous"), IconUtil.getMoveUpIcon()), ExtraActionButton {
-
-        init {
-            addCustomUpdater { repositoryModel.hasPreviousRepositories }
-        }
-
-        override fun getShortcut(): ShortcutSet {
-            return CommonActionsPanel.getCommonShortcut(Buttons.UP)
-        }
-
-        override fun actionPerformed(e: AnActionEvent) {
-            fireOnPreviousPagingEvent(PagingEvent(this))
-        }
-
-        override fun verifyUpdateState() {
-            isEnabled = repositoryModel.hasPreviousRepositories
-        }
-    }
-
-    private inner class NextActionButton : AnActionButton(GitlabBundle.message("clone.page.next"), IconUtil.getMoveDownIcon()), ExtraActionButton {
-
-        init {
-            addCustomUpdater { repositoryModel.hasNextRepositories }
-        }
-
-        override fun getShortcut(): ShortcutSet {
-            return CommonActionsPanel.getCommonShortcut(Buttons.DOWN)
-        }
-
-        override fun actionPerformed(e: AnActionEvent) {
-            fireOnNextPagingEvent(PagingEvent(this))
-        }
-
-        override fun verifyUpdateState() {
-            isEnabled = repositoryModel.hasNextRepositories
-        }
-    }
 }

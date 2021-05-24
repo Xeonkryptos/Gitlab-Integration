@@ -14,6 +14,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessModuleDir
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
@@ -22,6 +23,7 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.ui.SimpleListCellRenderer
+import com.intellij.ui.layout.ComponentPredicate
 import com.intellij.ui.layout.applyToComponent
 import com.intellij.ui.layout.panel
 import com.intellij.util.concurrency.annotations.RequiresEdt
@@ -30,6 +32,8 @@ import java.nio.file.Path
 import java.util.regex.Pattern
 import javax.swing.JComponent
 import javax.swing.JList
+import javax.swing.event.ListDataEvent
+import javax.swing.event.ListDataListener
 
 class ProjectLinkerDialog(private val project: Project, private val module: Module?) : DialogWrapper(project) {
 
@@ -45,6 +49,7 @@ class ProjectLinkerDialog(private val project: Project, private val module: Modu
     private val projectRootManager: ProjectRootManager = ProjectRootManager.getInstance(project)
 
     private lateinit var rootDirTextField: TextFieldWithBrowseButton
+    private lateinit var accountComboBox: ComboBox<GitlabAccount>
 
     private var projectNamespaceId: Long? = null
     private var selectedAccount: GitlabAccount? = null
@@ -68,7 +73,7 @@ class ProjectLinkerDialog(private val project: Project, private val module: Modu
     private val centerPanel: DialogPanel by lazy {
         panel {
             row(label = GitlabBundle.message("share.dialog.account.label")) {
-                val accountComboBox = comboBox(accountComboBoxModel, { selectedAccount }, { selectedAccount = it }, object : SimpleListCellRenderer<GitlabAccount>() {
+                accountComboBox = comboBox(accountComboBoxModel, { selectedAccount }, { selectedAccount = it }, object : SimpleListCellRenderer<GitlabAccount>() {
                     override fun customize(list: JList<out GitlabAccount>, value: GitlabAccount?, index: Int, selected: Boolean, hasFocus: Boolean) {
                         text = if (value != null) "${value.getGitlabDomain()}/${value.username}" else ""
                     }
@@ -94,10 +99,33 @@ class ProjectLinkerDialog(private val project: Project, private val module: Modu
                 }.withLargeLeftGap()
             }
             row(label = GitlabBundle.message("share.dialog.project.namespace.label")) {
-                textField(::projectNamespace).constraints(growX).apply { enabled(false) }
+                val projectNamespaceTextField = textField(::projectNamespace).constraints(growX).apply { enabled(false) }.component
                 link(text = GitlabBundle.message("share.dialog.project.namespace.choose.link")) {
-                    TODO("Implement action - Open another dialog with a list and lazy load of groups. An option to create a new group should be available, too")
-                }.withLargeLeftGap()
+                    val groupChooserDialog = GroupChooserDialog(project, accountComboBoxModel.selected!!)
+                    if (groupChooserDialog.showAndGet()) {
+                        val selectedGroup = groupChooserDialog.selectedGroup
+                        projectNamespaceId = selectedGroup?.id
+                        projectNamespaceTextField.text = selectedGroup?.fullName
+                    }
+                }.enableIf(object: ComponentPredicate() {
+                    override fun addListener(listener: (Boolean) -> Unit) {
+                        accountComboBoxModel.addListDataListener(object : ListDataListener {
+                            override fun intervalAdded(e: ListDataEvent?) {
+                                listener(invoke())
+                            }
+
+                            override fun intervalRemoved(e: ListDataEvent?) {
+                                listener(invoke())
+                            }
+
+                            override fun contentsChanged(e: ListDataEvent?) {
+                                listener(invoke())
+                            }
+                        })
+                    }
+
+                    override fun invoke(): Boolean = !accountComboBoxModel.isEmpty
+                }).withLargeLeftGap()
             }
             row(label = GitlabBundle.message("share.dialog.project.name.label")) {
                 textField(::projectName).withValidationOnApply {

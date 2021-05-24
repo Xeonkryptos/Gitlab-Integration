@@ -7,7 +7,6 @@ import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.AccessLevels
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabGroup
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabVisibility
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import jakarta.ws.rs.client.Entity
@@ -20,6 +19,8 @@ class GitlabGroupsApi : BaseGitlabApi() {
 
     companion object {
         private val GITLAB_GROUPS_GENERIC_TYPE: GenericType<List<GitlabGroup>> = GenericType<List<GitlabGroup>>(ParameterizedTypeImpl(List::class.java, GitlabGroup::class.java))
+
+        private const val GROUP_API_PATH = "api/v4/groups"
     }
 
     @RequiresBackgroundThread
@@ -34,7 +35,7 @@ class GitlabGroupsApi : BaseGitlabApi() {
     @RequiresBackgroundThread
     fun loadAvailableGroupsFor(gitlabAccount: GitlabAccount, searchText: String? = null): PagerProxy<List<GitlabGroup>>? {
         if (authenticationManager.hasAuthenticationTokenFor(gitlabAccount)) {
-            var baseUriBuilder: UriBuilder = UriBuilder.fromUri(gitlabAccount.getTargetGitlabHost()).path("api/v4/groups").queryParam("owned", gitlabAccount.resolveOnlyOwnProjects)
+            var baseUriBuilder: UriBuilder = UriBuilder.fromUri(gitlabAccount.getTargetGitlabHost()).path(GROUP_API_PATH).queryParam("owned", gitlabAccount.resolveOnlyOwnProjects)
                 // Starting with the developer role, projects can be created. With a role lower than developer, the permission to create projects is missing
                 .queryParam("min_access_level", AccessLevels.DEVELOPER.accessLevelId).queryParam("order_by", "full_name").queryParam("order_by", "id").queryParam("sort", "asc") // Default sort is desc
             if (searchText != null && searchText.isNotBlank()) {
@@ -53,7 +54,7 @@ class GitlabGroupsApi : BaseGitlabApi() {
     @RequiresBackgroundThread
     fun createNewGroup(groupName: String, parentId: Int? = null, description: String? = null, visibility: GitlabVisibility? = null, gitlabAccount: GitlabAccount): GitlabGroup? {
         if (authenticationManager.hasAuthenticationTokenFor(gitlabAccount)) {
-            val baseUri = UriBuilder.fromUri(gitlabAccount.getTargetGitlabHost()).path("api/v4/groups").build()
+            val baseUri = UriBuilder.fromUri(gitlabAccount.getTargetGitlabHost()).path(GROUP_API_PATH).build()
             val gitlabClient = getGitlabApiClient(gitlabAccount)
             val pathName = StringUtil.collapseWhiteSpace(groupName).lowercase().replace(Regex("\\s+"), "-")
             val enrichedRequestWithToken = authenticationManager.enrichRequestWithToken(gitlabClient.target(baseUri).request(), gitlabAccount)
