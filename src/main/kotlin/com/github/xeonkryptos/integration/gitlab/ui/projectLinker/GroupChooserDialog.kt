@@ -3,7 +3,7 @@ package com.github.xeonkryptos.integration.gitlab.ui.projectLinker
 import com.github.xeonkryptos.integration.gitlab.api.PagerProxy
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabGroupsApi
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabGroup
-import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
+import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.ui.general.CollectionListModelExt
 import com.github.xeonkryptos.integration.gitlab.ui.general.CustomListToolbarDecorator

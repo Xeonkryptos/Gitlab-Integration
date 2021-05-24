@@ -1,6 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.ui.projectLinker
 
-import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
+import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.util.GitlabNotificationIdsHolder
 import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil

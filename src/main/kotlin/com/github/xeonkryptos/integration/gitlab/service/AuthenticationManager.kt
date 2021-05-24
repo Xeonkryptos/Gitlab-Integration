@@ -6,7 +6,10 @@ import com.intellij.credentialStore.CredentialAttributes
 import com.intellij.credentialStore.generateServiceName
 import com.intellij.ide.passwordSafe.PasswordSafe
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.project.Project
+import com.intellij.util.AuthData
 import com.intellij.util.messages.MessageBus
+import git4idea.remote.GitHttpAuthDataProvider
 import jakarta.ws.rs.client.Invocation
 
 /**
@@ -16,6 +19,8 @@ import jakarta.ws.rs.client.Invocation
 class AuthenticationManager {
 
     private val messageBus: MessageBus = ApplicationManager.getApplication().messageBus
+
+    fun hasAuthenticationTokenFor(gitlabAccount: GitlabAccount) = getAuthenticationTokenFor(gitlabAccount) != null
 
     fun storeAuthentication(gitlabAccount: GitlabAccount, gitlabAccessToken: String) {
         storeTokenFor(gitlabAccount, gitlabAccessToken)

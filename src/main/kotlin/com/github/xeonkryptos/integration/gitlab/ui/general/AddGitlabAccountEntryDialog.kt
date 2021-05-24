@@ -1,6 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.ui.general
 
-import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
+import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.util.Disposer

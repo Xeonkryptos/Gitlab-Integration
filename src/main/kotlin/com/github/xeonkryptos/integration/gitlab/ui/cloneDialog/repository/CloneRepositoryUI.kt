@@ -1,6 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository
 
-import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
+import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEvent
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.GlobalSearchTextEvent

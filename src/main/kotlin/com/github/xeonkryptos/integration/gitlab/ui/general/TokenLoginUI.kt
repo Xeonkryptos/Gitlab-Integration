@@ -1,6 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.ui.general
 
-import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
+import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.GitlabLoginData
 import com.intellij.openapi.Disposable

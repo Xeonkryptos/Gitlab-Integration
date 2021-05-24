@@ -2,7 +2,7 @@ package com.github.xeonkryptos.integration.gitlab.ui.general
 
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabUserApi
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabUser
-import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
+import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabHostSettings

@@ -1,7 +1,7 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
 
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabProject
-import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
+import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabAccountStateNotifier
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabLoginChangeNotifier
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager

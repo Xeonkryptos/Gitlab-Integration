@@ -1,7 +1,7 @@
 package com.github.xeonkryptos.integration.gitlab.ui.projectLinker
 
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabVisibility
-import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
+import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabLoginChangeNotifier
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.ui.general.AddGitlabAccountEntryDialog

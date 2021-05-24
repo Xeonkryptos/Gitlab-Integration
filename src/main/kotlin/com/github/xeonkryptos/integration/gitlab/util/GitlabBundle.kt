@@ -1,4 +1,4 @@
-package com.github.xeonkryptos.integration.gitlab.bundle
+package com.github.xeonkryptos.integration.gitlab.util
 
 import com.intellij.AbstractBundle
 import org.jetbrains.annotations.NonNls
