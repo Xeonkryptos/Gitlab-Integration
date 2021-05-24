@@ -6,6 +6,20 @@
 
 ### Added
 
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [0.0.1-alpha]
+
+### Added
+
 - Added support for different gitlab hosts
 - Added support for different users on the same host
 - Added support for disabled certificate validation (usually needed for self-hosted gitlab instances with a self-signed certificate)
