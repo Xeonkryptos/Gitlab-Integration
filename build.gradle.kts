@@ -36,7 +36,7 @@ repositories {
 }
 dependencies {
     implementation("org.glassfish.jersey.core:jersey-client:3.0.1")
-    runtimeOnly("org.glassfish.jersey.media:jersey-media-json-jackson:3.0.1") {
+    implementation("org.glassfish.jersey.media:jersey-media-json-jackson:3.0.1") {
         // Already available in the IntelliJ environment. Including them even transitively here leads to class loading issues (IntelliJ uses different class loaders for the plugins and the basic environment, etc).
         exclude("com.fasterxml.jackson.core", "jackson-annotations")
         exclude("com.fasterxml.jackson.core", "jackson-databind")
