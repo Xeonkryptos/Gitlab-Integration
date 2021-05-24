@@ -6,10 +6,7 @@ import com.intellij.credentialStore.CredentialAttributes
 import com.intellij.credentialStore.generateServiceName
 import com.intellij.ide.passwordSafe.PasswordSafe
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.project.Project
-import com.intellij.util.AuthData
 import com.intellij.util.messages.MessageBus
-import git4idea.remote.GitHttpAuthDataProvider
 import jakarta.ws.rs.client.Invocation
 
 /**
@@ -33,8 +30,6 @@ class AuthenticationManager {
 
         messageBus.syncPublisher(GitlabLoginChangeNotifier.LOGIN_STATE_CHANGED_TOPIC).onSignOut(gitlabAccount)
     }
-
-    fun hasAuthenticationTokenFor(gitlabAccount: GitlabAccount) = getAuthenticationTokenFor(gitlabAccount) != null
 
     fun enrichRequestWithToken(requestBuilder: Invocation.Builder, gitlabAccount: GitlabAccount): Invocation.Builder = requestBuilder.header("PRIVATE-TOKEN", getAuthenticationTokenFor(gitlabAccount))
 

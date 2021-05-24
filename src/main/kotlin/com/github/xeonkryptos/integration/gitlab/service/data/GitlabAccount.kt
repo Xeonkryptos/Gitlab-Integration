@@ -7,7 +7,7 @@ import com.intellij.util.xmlb.annotations.Transient
  * @author Xeonkryptos
  * @since 11.12.2020
  */
-data class GitlabAccount(@Volatile var userId: Long? = null, @Volatile var username: String = "", @Volatile var useSSH: Boolean = false) {
+data class GitlabAccount(@Volatile var userId: Long? = null, @Volatile var username: String = "", @Volatile var useSSH: Boolean = true) {
 
     @Volatile
     @Transient
