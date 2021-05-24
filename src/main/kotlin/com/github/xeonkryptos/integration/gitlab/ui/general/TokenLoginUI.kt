@@ -1,10 +1,10 @@
-package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
+package com.github.xeonkryptos.integration.gitlab.ui.general
 
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
+import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.GitlabLoginData
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.service
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComponentValidator
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.ValidationInfo
@@ -23,7 +23,7 @@ import javax.swing.event.DocumentEvent
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class TokenLoginUI @JvmOverloads constructor(withPanelTitle: Boolean = true, onLoginAction: ((gitlabLoginData: GitlabLoginData, gitlabHostTxtField: JBTextField) -> Unit)? = null) : Disposable {
+class TokenLoginUI(withPanelTitle: Boolean = true, onLoginAction: ((gitlabLoginData: GitlabLoginData, gitlabHostTxtField: JBTextField) -> Unit)? = null) : Disposable {
 
     private val gitlabSettings = service<GitlabSettingsService>().state
 

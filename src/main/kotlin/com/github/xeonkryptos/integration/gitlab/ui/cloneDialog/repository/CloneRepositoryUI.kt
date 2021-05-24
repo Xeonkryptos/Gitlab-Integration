@@ -9,6 +9,8 @@ import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.PagingEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ReloadDataEvent
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ReloadDataEventListener
+import com.github.xeonkryptos.integration.gitlab.ui.general.CustomListToolbarDecorator
+import com.github.xeonkryptos.integration.gitlab.ui.general.ExtraActionButton
 import com.intellij.dvcs.repo.ClonePathProvider
 import com.intellij.dvcs.ui.DvcsBundle
 import com.intellij.dvcs.ui.SelectChildTextFieldWithBrowseButton
@@ -148,10 +150,6 @@ class CloneRepositoryUI(private val project: Project) : Disposable {
     fun addGlobalSearchTextEventListener(listener: GlobalSearchTextEventListener) = eventListeners.add(GlobalSearchTextEventListener::class.java, listener)
 
     fun removeGlobalSearchTextEventListener(listener: GlobalSearchTextEventListener) = eventListeners.remove(GlobalSearchTextEventListener::class.java, listener)
-
-    interface ExtraActionButton {
-        fun verifyUpdateState()
-    }
 
     private inner class PreviousActionButton : AnActionButton(GitlabBundle.message("clone.page.previous"), IconUtil.getMoveUpIcon()), ExtraActionButton {
 

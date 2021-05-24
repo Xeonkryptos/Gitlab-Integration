@@ -1,6 +1,7 @@
 package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository
 
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
+import com.github.xeonkryptos.integration.gitlab.ui.general.CollectionListModelExt
 import java.util.*
 
 class DefaultCloneRepositoryUIModel : CloneRepositoryUIModel, CollectionListModelExt<GitlabProjectListItem>() {

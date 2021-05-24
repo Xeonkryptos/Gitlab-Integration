@@ -1,4 +1,4 @@
-package com.github.xeonkryptos.integration.gitlab.settings.ui
+package com.github.xeonkryptos.integration.gitlab.ui.settings
 
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabAccountStateNotifier

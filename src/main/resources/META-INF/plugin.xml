@@ -18,8 +18,8 @@
         <applicationService serviceImplementation="com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabUserApi"/>
         <applicationService serviceImplementation="com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabGroupsApi"/>
 
-        <projectConfigurable parentId="tools" instance="com.github.xeonkryptos.integration.gitlab.settings.GitlabIntegrationSettingsConfigurable"
-                             id="com.github.xeonkryptos.integration.gitlab.settings.GitlabIntegrationSettingsConfigurable" displayName="Gitlab Settings" nonDefaultProject="false"/>
+        <projectConfigurable parentId="tools" instance="com.github.xeonkryptos.integration.gitlab.ui.settings.GitlabIntegrationSettingsConfigurable"
+                             id="com.github.xeonkryptos.integration.gitlab.ui.settings.GitlabIntegrationSettingsConfigurable" displayName="Gitlab Settings" nonDefaultProject="false"/>
     </extensions>
     <actions>
         <group id="com.github.xeonkryptos.integration.gitlab.vcs.group" text="Gitlab" popup="true">

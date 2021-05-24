@@ -1,6 +1,5 @@
-package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository
+package com.github.xeonkryptos.integration.gitlab.ui.general
 
-import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.CloneRepositoryUI.ExtraActionButton
 import com.intellij.ui.AnActionButton
 import com.intellij.ui.AnActionButtonRunnable
 import com.intellij.ui.CommonActionsPanel
@@ -19,7 +18,7 @@ import javax.swing.event.ListDataListener
 /**
  * Based on [com.intellij.ui.ListToolbarDecorator], copied it really, and added some custom code. A copy of it is required, because the base class isn't accessible (can't extend from it), needs
  * the basic functionality, but with some minor changes.<br></br>
- * Thus, this implementation handles the extra actions differently. When implementing the interface [CloneRepositoryUI.ExtraActionButton] they should be handled differently. The basic
+ * Thus, this implementation handles the extra actions differently. When implementing the interface [ExtraActionButton] they should be handled differently. The basic
  * implementation enables the buttons when at least one element in your list/table is selected. The goal here is to trigger a download call and replace the internal content with the received data
  * and not manipulating the internal model (positions, etc). Therefore, the enabled state is typically verified with the selection state. This behaviour is avoided, if custom extra actions are used,
  * that are implementing the interface mentioned above. Every other button behaves as the default ones -> only work with the internal model.

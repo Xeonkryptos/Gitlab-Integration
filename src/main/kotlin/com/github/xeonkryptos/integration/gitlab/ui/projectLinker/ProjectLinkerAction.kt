@@ -64,9 +64,9 @@ class ProjectLinkerAction : DumbAwareAction(GitlabBundle.message("share.action")
         val projectLinkerDialog = ProjectLinkerDialog(project, module)
         projectLinkerDialog.fillWithDefaultValues(allGitlabAccounts)
         if (projectLinkerDialog.showAndGet()) {
-            val gitlabHostWithoutProtocol = "${projectLinkerDialog.selectedAccount!!.getGitlabDomain()}/"
-            val foundGitRepository = gitRepositoryManager.getRepositoryForRootQuick(projectLinkerDialog.rootDirVirtualFile)
             val projectLinkerConfiguration = projectLinkerDialog.constructProjectLinkerConfiguration()
+            val gitlabHostWithoutProtocol = "${projectLinkerConfiguration.gitlabAccount.getGitlabDomain()}/"
+            val foundGitRepository = gitRepositoryManager.getRepositoryForRootQuick(projectLinkerConfiguration.rootDir)
             if (foundGitRepository != null && foundGitRepository.remotes.asSequence().flatMap { it.pushUrls }.any { it.contains(gitlabHostWithoutProtocol) }) {
                 UploadGitRepoAndShareTask(project, projectLinkerConfiguration, foundGitRepository).queue()
             } else if (foundGitRepository != null) {

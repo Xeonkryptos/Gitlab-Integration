@@ -1,6 +1,5 @@
-package com.github.xeonkryptos.integration.gitlab.settings
+package com.github.xeonkryptos.integration.gitlab.ui.settings
 
-import com.github.xeonkryptos.integration.gitlab.settings.ui.GitlabIntegrationSettingsForm
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer

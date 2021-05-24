@@ -2,7 +2,11 @@ package com.github.xeonkryptos.integration.gitlab.ui.projectLinker
 
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabVisibility
 import com.github.xeonkryptos.integration.gitlab.bundle.GitlabBundle
+import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabLoginChangeNotifier
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
+import com.github.xeonkryptos.integration.gitlab.ui.general.AddGitlabAccountEntryDialog
+import com.github.xeonkryptos.integration.gitlab.util.invokeOnDispatchThread
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.module.Module
@@ -42,14 +46,18 @@ class ProjectLinkerDialog(private val project: Project, private val module: Modu
 
     private lateinit var rootDirTextField: TextFieldWithBrowseButton
 
-    var projectNamespaceId: Long? = null
-        private set
+    private var projectNamespaceId: Long? = null
+    private var selectedAccount: GitlabAccount? = null
+    private var rootDirVirtualFile: VirtualFile? = null
 
     // Properties need to be public because they are accessed via property binding and exactly this binding can only access publicly available properties.
+    @Suppress("MemberVisibilityCanBePrivate")
     var projectName: String = ""
+    @Suppress("MemberVisibilityCanBePrivate")
     var gitRemote: String = "origin"
+    @Suppress("MemberVisibilityCanBePrivate")
     var description: String = ""
-    var selectedAccount: GitlabAccount? = null
+    @Suppress("MemberVisibilityCanBePrivate")
     var selectedVisibility: GitlabVisibility = GitlabVisibility.PRIVATE
 
     @Suppress("MemberVisibilityCanBePrivate")
@@ -57,13 +65,10 @@ class ProjectLinkerDialog(private val project: Project, private val module: Modu
     @Suppress("MemberVisibilityCanBePrivate")
     var rootDir: String = ""
 
-    var rootDirVirtualFile: VirtualFile? = null
-        private set
-
     private val centerPanel: DialogPanel by lazy {
         panel {
             row(label = GitlabBundle.message("share.dialog.account.label")) {
-                comboBox(accountComboBoxModel, { selectedAccount }, { selectedAccount = it }, object : SimpleListCellRenderer<GitlabAccount>() {
+                val accountComboBox = comboBox(accountComboBoxModel, { selectedAccount }, { selectedAccount = it }, object : SimpleListCellRenderer<GitlabAccount>() {
                     override fun customize(list: JList<out GitlabAccount>, value: GitlabAccount?, index: Int, selected: Boolean, hasFocus: Boolean) {
                         text = if (value != null) "${value.getGitlabDomain()}/${value.username}" else ""
                     }
@@ -72,9 +77,20 @@ class ProjectLinkerDialog(private val project: Project, private val module: Modu
                         return@withValidationOnApply error(GitlabBundle.message("share.dialog.missing.account"))
                     }
                     return@withValidationOnApply null
-                }.applyToComponent { addItemListener { projectNamespace = "" } }.constraints(growX)
-                link(text = GitlabBundle.message("share.dialog.manage.accounts.link")) {
-                    TODO("Implement action")
+                }.applyToComponent { addItemListener { projectNamespace = "" } }.constraints(growX).component
+                link(text = GitlabBundle.message("share.dialog.add.accounts.link")) {
+                    val connection = ApplicationManager.getApplication().messageBus.connect(disposable)
+                    connection.subscribe(GitlabLoginChangeNotifier.LOGIN_STATE_CHANGED_TOPIC, object : GitlabLoginChangeNotifier {
+                        override fun onSignIn(gitlabAccount: GitlabAccount) {
+                            invokeOnDispatchThread {
+                                accountComboBoxModel.add(gitlabAccount)
+                                accountComboBox.item = gitlabAccount
+                            }
+                        }
+                    })
+                    AddGitlabAccountEntryDialog(project).show()
+                    connection.deliverImmediately()
+                    connection.disconnect()
                 }.withLargeLeftGap()
             }
             row(label = GitlabBundle.message("share.dialog.project.namespace.label")) {

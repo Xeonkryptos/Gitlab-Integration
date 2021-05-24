@@ -1,6 +1,7 @@
-package com.github.xeonkryptos.integration.gitlab.settings.ui
+package com.github.xeonkryptos.integration.gitlab.ui.settings
 
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
+import com.github.xeonkryptos.integration.gitlab.ui.general.AddGitlabAccountEntryDialog
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
@@ -58,10 +59,7 @@ class GitlabIntegrationSettingsForm(private val project: Project) : Disposable {
         gitlabHostsTbl = JBTable(gitlabHostsTableModel, tableColumnModel)
         gitlabHostsTbl.setShowGrid(false)
 
-        val onAddAction = AnActionButtonRunnable {
-            val addGitlabSettingsEntryDialog = AddGitlabSettingsEntryDialog(project)
-            addGitlabSettingsEntryDialog.show()
-        }
+        val onAddAction = AnActionButtonRunnable { AddGitlabAccountEntryDialog(project).show() }
         val onRemoveAction = AnActionButtonRunnable {
             val selectedRow = gitlabHostsTbl.selectedRow
             gitlabHostsTableModel.removeEntry(selectedRow)

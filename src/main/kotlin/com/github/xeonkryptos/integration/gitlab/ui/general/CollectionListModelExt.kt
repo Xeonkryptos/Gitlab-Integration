@@ -1,4 +1,4 @@
-package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository
+package com.github.xeonkryptos.integration.gitlab.ui.general
 
 import com.intellij.ui.CollectionListModel
 import java.util.function.Predicate

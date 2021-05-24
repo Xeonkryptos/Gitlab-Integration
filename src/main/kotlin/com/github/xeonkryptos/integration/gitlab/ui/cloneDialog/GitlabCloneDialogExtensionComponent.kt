@@ -11,6 +11,8 @@ import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.Clone
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEvent
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ReloadDataEvent
+import com.github.xeonkryptos.integration.gitlab.ui.general.LoginTask
+import com.github.xeonkryptos.integration.gitlab.ui.general.TokenLoginUI
 import com.github.xeonkryptos.integration.gitlab.util.GitlabNotificationIdsHolder
 import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
