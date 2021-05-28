@@ -14,6 +14,8 @@
 
 ### Fixed
 
+- Ignoring of disabled ssl verification when signing in for the first time via login dialog
+
 ### Security
 
 ## [0.0.1-alpha]
