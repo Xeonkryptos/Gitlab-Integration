@@ -49,10 +49,11 @@ class ProjectLinkerAction : DumbAwareAction(GitlabBundle.message("share.action")
         val gitRepositoryManager = project.service<GitRepositoryManager>()
         val repositories = projectRootManager.contentRoots.mapNotNull { gitRepositoryManager.getRepositoryForFileQuick(it) }
         if (repositories.isNotEmpty()) {
-            val knownGitlabDomains = allGitlabAccounts.map { it.getGitlabDomain() }
+            val knownGitlabDomains = allGitlabAccounts.map { it.getGitlabDomainWithoutPort() }
             val knownGitlabRemoteConfigurations = repositories.asSequence().flatMap { it.remotes }.flatMap { remote -> remote.urls }.mapNotNull {
+                val gitRemoteHost = GitlabUtil.getGitlabDomainWithoutPort(it)
                 for (knownGitlabDomain in knownGitlabDomains) {
-                    if (it.contains("$knownGitlabDomains/")) return@mapNotNull it
+                    if (gitRemoteHost == knownGitlabDomain) return@mapNotNull it
                 }
                 return@mapNotNull null
             }.toList()
@@ -86,8 +87,7 @@ class ProjectLinkerAction : DumbAwareAction(GitlabBundle.message("share.action")
         }
 
         override fun createCenterPanel(): JComponent {
-            val mainText = JBLabel(if (remotes.size == 1) GitlabBundle.message("share.action.remote.is.on.gitlab")
-                                   else GitlabBundle.message("share.action.remotes.are.on.gitlab"))
+            val mainText = JBLabel(if (remotes.size == 1) GitlabBundle.message("share.action.remote.is.on.gitlab") else GitlabBundle.message("share.action.remotes.are.on.gitlab"))
 
             val remotesPanel = JPanel().apply {
                 layout = BoxLayout(this, BoxLayout.Y_AXIS)

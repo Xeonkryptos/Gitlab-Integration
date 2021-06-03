@@ -3,7 +3,7 @@ package com.github.xeonkryptos.integration.gitlab.ui.general
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.github.xeonkryptos.integration.gitlab.ui.clone.GitlabLoginData
 import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
-import com.intellij.openapi.Disposable
+import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.components.service
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.ValidationInfo
@@ -20,7 +20,7 @@ import javax.swing.event.DocumentEvent
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class TokenLoginUI(withPanelTitle: Boolean = true) : Disposable {
+class TokenLoginUI(withPanelTitle: Boolean = true) {
 
     private val gitlabSettings = service<GitlabSettingsService>().state
 
@@ -28,12 +28,9 @@ class TokenLoginUI(withPanelTitle: Boolean = true) : Disposable {
         document.addDocumentListener(object : DocumentAdapter() {
             override fun textChanged(e: DocumentEvent) {
                 if (!disableCertificateValidationManuallySet) {
-                    @Suppress("HttpUrlsUsage")
-                    val skipCharacters = if (text.startsWith("http://")) "http://".length else if (text.startsWith("https://")) "https://".length else 0
-                    val endOfHostname = text.indexOf('/', skipCharacters)
-                    val domainWithProtocol = if (endOfHostname > -1) text.substring(0 until endOfHostname) else text
+                    val gitlabDomain = GitlabUtil.getGitlabDomain(text)
 
-                    disableCertificateValidation = gitlabSettings.gitlabHostSettings[domainWithProtocol]?.disableSslVerification ?: false
+                    disableCertificateValidation = gitlabSettings.gitlabHostSettings[gitlabDomain]?.disableSslVerification ?: false
                     if (checkBoxBuilder?.component?.isSelected != disableCertificateValidation) {
                         checkBoxBuilder?.component?.isSelected = disableCertificateValidation
                     }
@@ -85,6 +82,4 @@ class TokenLoginUI(withPanelTitle: Boolean = true) : Disposable {
     }
 
     fun getGitlabLoginData() = GitlabLoginData(gitlabHostTxtField.text, gitlabAccessTokenTxtField.text, disableCertificateValidation)
-
-    override fun dispose() {}
 }

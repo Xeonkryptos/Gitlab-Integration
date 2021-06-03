@@ -12,7 +12,6 @@ class AddGitlabAccountEntryDialog(private val project: Project) : DialogWrapper(
     private val tokenLoginUI: TokenLoginUI = TokenLoginUI(withPanelTitle = false)
 
     init {
-        Disposer.register(disposable, tokenLoginUI)
         init()
         title = GitlabBundle.message("settings.general.dialog.add")
         horizontalStretch = 1.5f

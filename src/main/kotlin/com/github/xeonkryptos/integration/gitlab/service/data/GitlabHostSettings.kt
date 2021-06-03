@@ -1,10 +1,12 @@
 package com.github.xeonkryptos.integration.gitlab.service.data
 
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabAccountStateNotifier
+import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.util.messages.MessageBus
 import com.intellij.util.xmlb.annotations.OptionTag
 import com.intellij.util.xmlb.annotations.XCollection
+import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -84,13 +86,7 @@ data class GitlabHostSettings(@Volatile var gitlabHost: String = "") {
         }
     }
 
-    fun getGitlabDomain(): String {
-        var normalizedGitlabHost = gitlabHost.replace(Regex("http.://"), "")
-        if (normalizedGitlabHost.endsWith('/')) {
-            normalizedGitlabHost = normalizedGitlabHost.substring(0, normalizedGitlabHost.length - 1)
-        }
-        return normalizedGitlabHost
-    }
+    fun getGitlabDomain(): String = GitlabUtil.getGitlabDomain(gitlabHost)
 
     fun deepCopy(): GitlabHostSettings {
         val newGitlabAccounts: MutableSet<GitlabAccount> = ConcurrentHashMap.newKeySet()

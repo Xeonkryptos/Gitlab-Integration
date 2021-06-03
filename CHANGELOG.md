@@ -21,6 +21,7 @@
 - Ignoring of disabled ssl verification when signing in for the first time via login dialog
 - Initial loading of projects when sign in for the first time in clone dialog
 - Sign in issues when downloading of the user's avatar failed for unknown reasons
+- Detection of projects already on a known Gitlab instance
 
 ### Security
 

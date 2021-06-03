@@ -23,6 +23,8 @@ data class GitlabUser @JsonCreator constructor(@JsonProperty("id", required = tr
         private val LOG = GitlabUtil.LOG
     }
 
+
+
     val avatar: Image? = run {
         val convertedUrl = URL(avatarUrl)
         try {

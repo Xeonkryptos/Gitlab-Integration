@@ -1,5 +1,6 @@
 package com.github.xeonkryptos.integration.gitlab.service.data
 
+import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.util.xmlb.annotations.OptionTag
 import com.intellij.util.xmlb.annotations.Transient
 
@@ -35,6 +36,8 @@ data class GitlabAccount(@Volatile var userId: Long? = null, @Volatile var usern
     fun getGitlabHost(): String = gitlabHostSettingsOwner!!.gitlabHost
 
     fun getGitlabDomain(): String = gitlabHostSettingsOwner!!.getGitlabDomain()
+
+    fun getGitlabDomainWithoutPort(): String = GitlabUtil.convertToRepoUri(gitlabHostSettingsOwner!!.gitlabHost).host
 
     fun getTargetGitlabHost(): String {
         val gitlabHost = getGitlabHost()

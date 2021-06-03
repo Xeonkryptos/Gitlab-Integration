@@ -65,7 +65,7 @@ class GitlabProjectsApi : BaseGitlabApi() {
         val gitlabClient = getGitlabApiClient(gitlabAccount)
         val enrichedRequestWithToken = authenticationManager.enrichRequestWithToken(gitlabClient.target(baseUri).request(), gitlabAccount)
         val response = enrichedRequestWithToken.post(Entity.json(CreateProjectRequest(projectName, visibility?.name?.lowercase(), namespaceId, description)))
-        if (response.statusInfo == Response.Status.CREATED) {
+        if (response.statusInfo.statusCode == Response.Status.CREATED.statusCode) {
             return response.readEntity(GitlabProject::class.java)!!
         }
         val receivedErrorMessage = response.readEntity(String::class.java)

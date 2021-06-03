@@ -8,7 +8,6 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComponentValidator
 import com.intellij.openapi.ui.ValidationInfo
-import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.util.containers.ContainerUtil
 import java.util.Collections
@@ -54,8 +53,6 @@ class EmbeddedGitlabLoginPanel(project: Project) : JPanel(), Disposable {
         private set
 
     init {
-        Disposer.register(this, tokenLoginUI)
-
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         add(tokenLoginUI.dialogPanel)
         add(errorText)

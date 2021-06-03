@@ -112,8 +112,6 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
         for ((index, userEntry) in gitlabUsersPerAccount.entries.withIndex()) {
             val accountTitle = userEntry.value.name
 
-            @Suppress("HttpUrlsUsage")
-            val serverInfo = userEntry.value.server.removePrefix("http://").removePrefix("https://")
             val avatar = ImageIcon(userEntry.value.avatar ?: ImageLoader.loadFromResource(GitlabUtil.GITLAB_ICON_PATH, javaClass))
             val accountActions = mutableListOf<AccountMenuItem.Action>()
             val showSeparatorAbove = index != 0
@@ -136,7 +134,7 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
                 authenticationManager.deleteAuthenticationFor(userEntry.key)
             }, showSeparatorAbove = true)
 
-            menuItems += AccountMenuItem.Account(accountTitle, serverInfo, avatar, accountActions, showSeparatorAbove)
+            menuItems += AccountMenuItem.Account(accountTitle, userEntry.value.server, avatar, accountActions, showSeparatorAbove)
         } // TODO: Add actions to login into a new account
 
         AccountsMenuListPopup(project, AccountMenuPopupStep(menuItems)).showUnderneathOf(ui.usersPanel)
