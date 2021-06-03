@@ -6,7 +6,7 @@ import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabHostSettings
-import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.GitlabLoginData
+import com.github.xeonkryptos.integration.gitlab.ui.clone.GitlabLoginData
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ModalityState

@@ -1,11 +1,10 @@
 package com.github.xeonkryptos.integration.gitlab.ui.general
 
-import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
-import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.GitlabLoginData
+import com.github.xeonkryptos.integration.gitlab.ui.clone.GitlabLoginData
+import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.service
-import com.intellij.openapi.ui.ComponentValidator
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.DocumentAdapter
@@ -15,15 +14,13 @@ import com.intellij.ui.layout.CellBuilder
 import com.intellij.ui.layout.ValidationInfoBuilder
 import com.intellij.ui.layout.applyToComponent
 import com.intellij.ui.layout.panel
-import java.util.function.Supplier
-import javax.swing.JButton
 import javax.swing.event.DocumentEvent
 
 /**
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class TokenLoginUI(withPanelTitle: Boolean = true, onLoginAction: ((gitlabLoginData: GitlabLoginData, gitlabHostTxtField: JBTextField) -> Unit)? = null) : Disposable {
+class TokenLoginUI(withPanelTitle: Boolean = true) : Disposable {
 
     private val gitlabSettings = service<GitlabSettingsService>().state
 
@@ -45,62 +42,28 @@ class TokenLoginUI(withPanelTitle: Boolean = true, onLoginAction: ((gitlabLoginD
         })
     }
     private val gitlabAccessTokenTxtField: JBTextField = JBTextField()
-    private val loginButton: JButton by lazy {
-        JButton(GitlabBundle.message("accounts.log.in")).apply {
-            addActionListener {
-                if (doRevalidate()) {
-                    val gitlabLoginData = getGitlabLoginData()
-                    onLoginAction?.invoke(gitlabLoginData, gitlabHostTxtField)
-                }
-            }
-        }
-    }
 
     private var checkBoxBuilder: CellBuilder<JBCheckBox>? = null
     private var disableCertificateValidationManuallySet: Boolean = false
     var disableCertificateValidation: Boolean = false
 
-    val tokenLoginPanel: DialogPanel = panel(title = if (withPanelTitle) GitlabBundle.message("action.gitlab.accounts.addGitlabAccountWithToken.text") else null) {
-        row(GitlabBundle.message("action.gitlab.accounts.addGitlabAccountWithToken.host")) {
-            gitlabHostTxtField().applyIfEnabled().focused().withValidationOnApply { validateHostField() }
-        }
-        row(GitlabBundle.message("action.gitlab.accounts.addGitlabAccountWithToken.token")) {
-            gitlabAccessTokenTxtField().withValidationOnApply { validateTokenField() }
-        }
-        row {
-            checkBoxBuilder = checkBox(GitlabBundle.message("settings.general.table.column.certificates"), this@TokenLoginUI::disableCertificateValidation).applyToComponent {
-                addActionListener { disableCertificateValidationManuallySet = true }
-            }
-        }
-        if (onLoginAction != null) {
-            row {
-                loginButton()
-            }
-        }
-    }
-
-    private var gitlabHostTxtFieldValidator: ComponentValidator? = null
-    private var gitlabAccessTokenTxtFieldValidator: ComponentValidator? = null
+    val dialogPanel: DialogPanel
 
     init {
-        if (onLoginAction != null) {
-            // Validators are necessary only when we're not working in a DialogWrapper. Mostly, when embedded in the git clone dialog
-            gitlabHostTxtFieldValidator = ComponentValidator(this).withValidator(Supplier<ValidationInfo?> {
-                if (gitlabHostTxtField.text.isBlank()) {
-                    return@Supplier ValidationInfo(GitlabBundle.message("credentials.server.cannot.be.empty"), gitlabHostTxtField)
+        dialogPanel = panel(title = if (withPanelTitle) GitlabBundle.message("action.gitlab.accounts.addGitlabAccountWithToken.text") else null) {
+            row(GitlabBundle.message("action.gitlab.accounts.addGitlabAccountWithToken.host")) {
+                gitlabHostTxtField().focused().withValidationOnApply { validateHostField() }
+            }
+            row(GitlabBundle.message("action.gitlab.accounts.addGitlabAccountWithToken.token")) {
+                gitlabAccessTokenTxtField().withValidationOnApply { validateTokenField() }
+            }
+            row {
+                checkBoxBuilder = checkBox(GitlabBundle.message("settings.general.table.column.certificates"), this@TokenLoginUI::disableCertificateValidation).applyToComponent {
+                    addActionListener { disableCertificateValidationManuallySet = true }
                 }
-                @Suppress("HttpUrlsUsage") if (!gitlabHostTxtField.text.startsWith("http://") && !gitlabHostTxtField.text.startsWith("https://")) {
-                    return@Supplier ValidationInfo(GitlabBundle.message("credentials.server.path.invalid"), gitlabHostTxtField)
-                }
-                return@Supplier null
-            }).installOn(gitlabHostTxtField)
-            gitlabAccessTokenTxtFieldValidator = ComponentValidator(this).withValidator(Supplier<ValidationInfo?> {
-                if (gitlabAccessTokenTxtField.text.isBlank()) {
-                    return@Supplier ValidationInfo(GitlabBundle.message("credentials.token.cannot.be.empty"), gitlabAccessTokenTxtField)
-                }
-                return@Supplier null
-            }).installOn(gitlabHostTxtField)
+            }
         }
+        dialogPanel.withMaximumHeight(dialogPanel.preferredSize.height)
     }
 
     @Suppress("HttpUrlsUsage")
@@ -119,12 +82,6 @@ class TokenLoginUI(withPanelTitle: Boolean = true, onLoginAction: ((gitlabLoginD
             return error(GitlabBundle.message("credentials.token.cannot.be.empty"))
         }
         return null
-    }
-
-    private fun doRevalidate(): Boolean {
-        gitlabHostTxtFieldValidator?.revalidate()
-        gitlabAccessTokenTxtFieldValidator?.revalidate()
-        return gitlabAccessTokenTxtFieldValidator?.validationInfo == null && gitlabAccessTokenTxtFieldValidator?.validationInfo == null
     }
 
     fun getGitlabLoginData() = GitlabLoginData(gitlabHostTxtField.text, gitlabAccessTokenTxtField.text, disableCertificateValidation)

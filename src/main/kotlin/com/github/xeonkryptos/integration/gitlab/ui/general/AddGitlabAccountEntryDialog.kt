@@ -23,12 +23,12 @@ class AddGitlabAccountEntryDialog(private val project: Project) : DialogWrapper(
     }
 
     override fun createCenterPanel(): JComponent {
-        return tokenLoginUI.tokenLoginPanel
+        return tokenLoginUI.dialogPanel
     }
 
     override fun doOKAction() {
         // Calling apply here to submit the configured information from the DialogPanel into the variables to retrieve them via tokenLoginUI.getGitlabLoginData()
-        tokenLoginUI.tokenLoginPanel.apply()
+        tokenLoginUI.dialogPanel.apply()
         val gitlabLoginData = tokenLoginUI.getGitlabLoginData()
         LoginTask(project, gitlabLoginData) { result: String? ->
             setErrorText(result)

@@ -1,4 +1,4 @@
-package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event
+package com.github.xeonkryptos.integration.gitlab.ui.clone.repository.event
 
 import java.util.*
 

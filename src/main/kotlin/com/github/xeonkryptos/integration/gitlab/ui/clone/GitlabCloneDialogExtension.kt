@@ -1,4 +1,4 @@
-package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
+package com.github.xeonkryptos.integration.gitlab.ui.clone
 
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.application.ModalityState

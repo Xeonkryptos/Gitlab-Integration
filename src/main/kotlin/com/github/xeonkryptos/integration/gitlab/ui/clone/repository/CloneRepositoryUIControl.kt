@@ -1,4 +1,4 @@
-package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository
+package com.github.xeonkryptos.integration.gitlab.ui.clone.repository
 
 import com.github.xeonkryptos.integration.gitlab.api.PagerProxy
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabProjectsApi
@@ -11,8 +11,8 @@ import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabLoginC
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
-import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEvent
-import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEventListener
+import com.github.xeonkryptos.integration.gitlab.ui.clone.repository.event.ClonePathEvent
+import com.github.xeonkryptos.integration.gitlab.ui.clone.repository.event.ClonePathEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.GlobalSearchTextEvent
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.GlobalSearchTextEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.PagingEvent
@@ -47,7 +47,7 @@ import javax.swing.SwingUtilities
  * @author Xeonkryptos
  * @since 20.02.2021
  */
-class DefaultCloneRepositoryUIControl(private val project: Project, val ui: CloneRepositoryUI) : CloneRepositoryUIControl {
+class CloneRepositoryUIControl(private val project: Project, val ui: CloneRepositoryUI) {
 
     private val gitlabUserApi = service<GitlabUserApi>()
     private val gitlabProjectsApi = service<GitlabProjectsApi>()
@@ -63,7 +63,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, val ui: Clon
         override fun getModalityState(): ModalityState = ModalityState.any()
 
         override fun setProgressVisible(visible: Boolean) {
-            this@DefaultCloneRepositoryUIControl.ui.listWithSearchComponent.list.setPaintBusy(visible)
+            this@CloneRepositoryUIControl.ui.listWithSearchComponent.list.setPaintBusy(visible)
         }
     }
 
@@ -71,7 +71,7 @@ class DefaultCloneRepositoryUIControl(private val project: Project, val ui: Clon
         override fun mouseClicked(e: MouseEvent?) = showPopupMenu()
     }
 
-    override fun registerBehaviourListeners() {
+    fun registerBehaviourListeners() {
         ui.usersPanel.addMouseListener(popupMenuMouseAdapter)
         initMessageListening(ui)
         ui.addGlobalSearchTextEventListener(object : GlobalSearchTextEventListener {

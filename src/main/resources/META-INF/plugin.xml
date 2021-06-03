@@ -9,7 +9,7 @@
     <depends>Git4Idea</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <openapi.vcs.ui.cloneDialog.VcsCloneDialogExtension implementation="com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.GitlabCloneDialogExtension"/>
+        <openapi.vcs.ui.cloneDialog.VcsCloneDialogExtension implementation="com.github.xeonkryptos.integration.gitlab.ui.clone.GitlabCloneDialogExtension"/>
 
         <applicationService serviceImplementation="com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabClient"/>
         <applicationService serviceImplementation="com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager"/>
@@ -18,12 +18,13 @@
         <applicationService serviceImplementation="com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabUserApi"/>
         <applicationService serviceImplementation="com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabGroupsApi"/>
 
-        <projectConfigurable parentId="tools" instance="com.github.xeonkryptos.integration.gitlab.ui.settings.GitlabIntegrationSettingsConfigurable"
+        <projectConfigurable parentId="project.propVCSSupport.Mappings" instance="com.github.xeonkryptos.integration.gitlab.ui.settings.GitlabIntegrationSettingsConfigurable"
                              id="com.github.xeonkryptos.integration.gitlab.ui.settings.GitlabIntegrationSettingsConfigurable" displayName="Gitlab Settings" nonDefaultProject="false"/>
     </extensions>
 
     <extensions defaultExtensionNs="Git4Idea">
         <GitHttpAuthDataProvider implementation="com.github.xeonkryptos.integration.gitlab.service.GitlabHttpAuthDataProvider"/>
+        <gitRepositoryHostingService implementation="com.github.xeonkryptos.integration.gitlab.service.GitlabRepositoryHostingService"/>
     </extensions>
 
     <actions>

@@ -1,8 +1,8 @@
-package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository
+package com.github.xeonkryptos.integration.gitlab.ui.clone.repository
 
 import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
-import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEvent
-import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEventListener
+import com.github.xeonkryptos.integration.gitlab.ui.clone.repository.event.ClonePathEvent
+import com.github.xeonkryptos.integration.gitlab.ui.clone.repository.event.ClonePathEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.GlobalSearchTextEvent
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.GlobalSearchTextEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.PagingEvent
@@ -41,7 +41,7 @@ class CloneRepositoryUI(private val project: Project) : Disposable {
 
     private val eventListeners: EventListenerList = EventListenerList()
 
-    internal val repositoryModel: CloneRepositoryUIModel = DefaultCloneRepositoryUIModel()
+    internal val repositoryModel: CloneRepositoryUIModel = CloneRepositoryUIModel()
     internal val usersPanel: JPanel = JPanel(FlowLayout(FlowLayout.LEADING, JBUI.scale(1), 0))
     internal val listWithSearchComponent: ListWithSearchComponent<GitlabProjectListItem> =
         ListWithSearchComponent(repositoryModel, GitlabProjectListCellRenderer { repositoryModel.availableAccounts }).apply {
@@ -78,7 +78,7 @@ class CloneRepositoryUI(private val project: Project) : Disposable {
     }
 
     val repositoryPanel: JPanel
-    var controller: CloneRepositoryUIControl = DefaultCloneRepositoryUIControl(project, this)
+    private var controller: CloneRepositoryUIControl = CloneRepositoryUIControl(project, this)
 
     init {
         repositoryPanel = panel(LCFlags.fill) {

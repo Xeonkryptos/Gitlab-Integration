@@ -1,18 +1,16 @@
-package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog
+package com.github.xeonkryptos.integration.gitlab.ui.clone
 
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabProject
-import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabAccountStateNotifier
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabLoginChangeNotifier
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
-import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.CloneRepositoryUI
-import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEvent
-import com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository.event.ClonePathEventListener
+import com.github.xeonkryptos.integration.gitlab.ui.clone.repository.CloneRepositoryUI
+import com.github.xeonkryptos.integration.gitlab.ui.clone.repository.event.ClonePathEvent
+import com.github.xeonkryptos.integration.gitlab.ui.clone.repository.event.ClonePathEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.ReloadDataEvent
-import com.github.xeonkryptos.integration.gitlab.ui.general.LoginTask
-import com.github.xeonkryptos.integration.gitlab.ui.general.TokenLoginUI
+import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.util.GitlabNotificationIdsHolder
 import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
@@ -20,7 +18,6 @@ import com.intellij.dvcs.ui.CloneDvcsValidationUtils
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.ComponentValidator
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vcs.CheckoutProvider
@@ -35,7 +32,6 @@ import com.intellij.util.ui.UIUtil
 import git4idea.checkout.GitCheckoutProvider
 import git4idea.commands.Git
 import java.nio.file.Paths
-import java.util.function.Supplier
 import javax.swing.JComponent
 import javax.swing.SwingUtilities
 
@@ -52,51 +48,33 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     private val gitlabSettings = service<GitlabSettingsService>().state
     private val authenticationManager = service<AuthenticationManager>()
 
-    private val wrapper: Wrapper = object : Wrapper() {
-        override fun setContent(wrapped: JComponent?) {
-            super.setContent(wrapped)
+    private val wrapper: Wrapper = Wrapper().apply { border = JBEmptyBorder(UIUtil.PANEL_REGULAR_INSETS) }
 
-            revalidate()
-            repaint()
-        }
-    }.apply { border = JBEmptyBorder(UIUtil.PANEL_REGULAR_INSETS) }
-
-    private val cloneRepositoryUI: CloneRepositoryUI by lazy {
-        CloneRepositoryUI(project).apply {
-            addClonePathEventListener(object : ClonePathEventListener {
-                override fun onClonePathChanged(event: ClonePathEvent) {
-                    gitlabProject = event.gitlabProject
-                    dialogStateListener.onOkActionEnabled(gitlabProject != null)
-                }
-            })
-        }
+    private val cloneRepositoryUI: CloneRepositoryUI = CloneRepositoryUI(project).apply {
+        addClonePathEventListener(object : ClonePathEventListener {
+            override fun onClonePathChanged(event: ClonePathEvent) {
+                gitlabProject = event.gitlabProject
+                dialogStateListener.onOkActionEnabled(gitlabProject != null)
+            }
+        })
+    }
+    private val gitlabLoginPanel = EmbeddedGitlabLoginPanel(project).apply {
+        addGitlabLoginActionListener(object : EmbeddedGitlabLoginPanel.GitlabLoginActionListener {
+            override fun onSuccessfulLogin(event: EmbeddedGitlabLoginPanel.GitlabLoginEvent) { switchToRepoScenery() }
+        })
     }
 
     private var gitlabProject: GitlabProject? = null
-    private val tokenLoginUI: TokenLoginUI = TokenLoginUI { gitlabLoginData, gitlabHostTxtField ->
-        LoginTask(project, gitlabLoginData) { result ->
-            if (result == null) {
-                SwingUtilities.invokeLater { switchToRepoScenery() }
-            } else {
-                loginFailedValidationInfo = ValidationInfo(result, gitlabHostTxtField)
-                loginValidator.revalidate()
-            }
-        }.doLogin()
-    }
-
-    @Volatile
-    private var loginFailedValidationInfo: ValidationInfo? = null
-    private val loginValidator = ComponentValidator(this).withValidator(Supplier<ValidationInfo?> { loginFailedValidationInfo }).installOn(tokenLoginUI.gitlabHostTxtField)
 
     init {
         initMessaging()
 
         Disposer.register(this, cloneRepositoryUI)
-        Disposer.register(this, tokenLoginUI)
+        Disposer.register(this, gitlabLoginPanel)
 
         val hasSignedInAccounts = gitlabSettings.hasGitlabAccountBy { authenticationManager.hasAuthenticationTokenFor(it) }
         if (!hasSignedInAccounts) {
-            wrapper.setContent(tokenLoginUI.tokenLoginPanel)
+            wrapper.setContent(gitlabLoginPanel)
         } else {
             cloneRepositoryUI.fireReloadDataEvent(ReloadDataEvent(this))
             wrapper.setContent(cloneRepositoryUI.repositoryPanel)
@@ -129,7 +107,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     private fun switchToLoginScenery() {
         val hasLoggedInAccount = gitlabSettings.hasGitlabAccountBy { authenticationManager.hasAuthenticationTokenFor(it) }
         if (!hasLoggedInAccount) {
-            wrapper.setContent(tokenLoginUI.tokenLoginPanel)
+            wrapper.setContent(gitlabLoginPanel)
 
             dialogStateListener.onOkActionEnabled(true)
             dialogStateListener.onOkActionNameChanged(GitlabBundle.message("accounts.log.in"))
@@ -186,15 +164,14 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
     override fun doValidateAll(): List<ValidationInfo> {
         val list = ArrayList<ValidationInfo>()
         if (isInLoginScenery()) {
-            ContainerUtil.addIfNotNull(list, loginFailedValidationInfo)
-            tokenLoginUI.tokenLoginPanel.validateCallbacks.mapNotNull { it() }.forEach { list.add(it) }
+            list.addAll(gitlabLoginPanel.currentValidationInfo)
         } else {
             ContainerUtil.addIfNotNull(list, CloneDvcsValidationUtils.checkDirectory(cloneRepositoryUI.directoryField.text, cloneRepositoryUI.directoryField.textField))
         }
         return list
     }
 
-    private fun isInLoginScenery(): Boolean = wrapper.targetComponent === tokenLoginUI.tokenLoginPanel
+    private fun isInLoginScenery(): Boolean = wrapper.targetComponent === gitlabLoginPanel
 
     override fun getView(): JComponent = wrapper
 

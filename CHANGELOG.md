@@ -8,6 +8,10 @@
 
 ### Changed
 
+- Show error messages separately when they can't be assigned to a specific UI component (i.e., on login error messages
+  when embedded in clone dialog)
+- Moved general Gitlab settings entry point into Version Control
+
 ### Deprecated
 
 ### Removed
@@ -15,6 +19,8 @@
 ### Fixed
 
 - Ignoring of disabled ssl verification when signing in for the first time via login dialog
+- Initial loading of projects when sign in for the first time in clone dialog
+- Sign in issues when downloading of the user's avatar failed for unknown reasons
 
 ### Security
 
@@ -24,7 +30,8 @@
 
 - Added support for different gitlab hosts
 - Added support for different users on the same host
-- Added support for disabled certificate validation (usually needed for self-hosted gitlab instances with a self-signed certificate)
+- Added support for disabled certificate validation (usually needed for self-hosted gitlab instances with a self-signed
+  certificate)
 - Download the avatar of the user and show it next to the search filter field
 - Download repositories with paging feature to make cloning from within the IDE possible
 - Added feature to share a project/module on Gitlab

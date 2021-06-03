@@ -1,4 +1,4 @@
-package com.github.xeonkryptos.integration.gitlab.ui.cloneDialog.repository
+package com.github.xeonkryptos.integration.gitlab.ui.clone.repository
 
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabProject
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
