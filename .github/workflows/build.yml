@@ -17,7 +17,7 @@ name: Build
 on:
   # Trigger the workflow on pushes to only the 'main' branch (this avoids duplicate checks being run e.g. for dependabot pull requests)
   push:
-    branches: [ main ]
+    branches: [main]
   # Trigger the workflow on any pull request
   pull_request:
 
@@ -48,34 +48,34 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v2
         with:
-          distribution: 'adopt'
+          distribution: adopt
           java-version: 11
 
-        # Check out current repository
-        - name: Fetch Sources
-          uses: actions/checkout@v2.3.4
+      # Check out current repository
+      - name: Fetch Sources
+        uses: actions/checkout@v2.3.4
 
-        # Cache Gradle dependencies
-        - name: Setup Gradle Dependencies Cache
-          uses: actions/cache@v2.1.6
-          with:
-            path: ~/.gradle/caches
-            key: ${{ runner.os }}-gradle-caches-${{ hashFiles('**/*.gradle', '**/*.gradle.kts', 'gradle.properties') }}
+      # Cache Gradle dependencies
+      - name: Setup Gradle Dependencies Cache
+        uses: actions/cache@v2.1.6
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-caches-${{ hashFiles('**/*.gradle', '**/*.gradle.kts', 'gradle.properties') }}
 
-        # Cache Gradle Wrapper
-        - name: Setup Gradle Wrapper Cache
-          uses: actions/cache@v2.1.6
-          with:
-            path: ~/.gradle/wrapper
-            key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
+      # Cache Gradle Wrapper
+      - name: Setup Gradle Wrapper Cache
+        uses: actions/cache@v2.1.6
+        with:
+          path: ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
 
-        # Run detekt, ktlint and tests
-        - name: Run Linters and Test
-          run: ./gradlew check
+      # Run detekt, ktlint and tests
+      - name: Run Linters and Test
+        run: ./gradlew check
 
-        # Run verifyPlugin Gradle task
-        - name: Verify Plugin
-          run: ./gradlew verifyPlugin
+      # Run verifyPlugin Gradle task
+      - name: Verify Plugin
+        run: ./gradlew verifyPlugin
 
   # Build plugin with buildPlugin Gradle task and provide the artifact for the next workflow jobs
   # Requires test job to be passed
@@ -94,7 +94,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v2
         with:
-          distribution: 'adopt'
+          distribution: adopt
           java-version: 11
 
       # Check out current repository
@@ -157,7 +157,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v2
         with:
-          distribution: 'adopt'
+          distribution: adopt
           java-version: 11
 
       # Check out current repository
@@ -205,7 +205,7 @@ jobs:
   releaseDraft:
     name: Release Draft
     if: github.event_name != 'pull_request'
-    needs: [ build, verify ]
+    needs: [build, verify]
     runs-on: ubuntu-latest
     steps:
 
