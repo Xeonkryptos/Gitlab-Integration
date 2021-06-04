@@ -3,7 +3,6 @@ package com.github.xeonkryptos.integration.gitlab.ui.general
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.github.xeonkryptos.integration.gitlab.ui.clone.GitlabLoginData
 import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
-import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.components.service
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.ValidationInfo
@@ -14,6 +13,7 @@ import com.intellij.ui.layout.CellBuilder
 import com.intellij.ui.layout.ValidationInfoBuilder
 import com.intellij.ui.layout.applyToComponent
 import com.intellij.ui.layout.panel
+import java.net.URI
 import javax.swing.event.DocumentEvent
 
 /**
@@ -28,12 +28,13 @@ class TokenLoginUI(withPanelTitle: Boolean = true) {
         document.addDocumentListener(object : DocumentAdapter() {
             override fun textChanged(e: DocumentEvent) {
                 if (!disableCertificateValidationManuallySet) {
-                    val gitlabDomain = GitlabUtil.getGitlabDomain(text)
-
-                    disableCertificateValidation = gitlabSettings.gitlabHostSettings[gitlabDomain]?.disableSslVerification ?: false
-                    if (checkBoxBuilder?.component?.isSelected != disableCertificateValidation) {
-                        checkBoxBuilder?.component?.isSelected = disableCertificateValidation
-                    }
+                    try {
+                        val gitlabDomain = URI(text).host
+                        disableCertificateValidation = gitlabSettings.gitlabHostSettings[gitlabDomain]?.disableSslVerification ?: false
+                        if (checkBoxBuilder?.component?.isSelected != disableCertificateValidation) {
+                            checkBoxBuilder?.component?.isSelected = disableCertificateValidation
+                        }
+                    } catch (ignored: Exception) {}
                 }
             }
         })
