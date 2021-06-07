@@ -93,7 +93,7 @@ class ProjectLinkerDialog(private val project: Project, private val module: Modu
                             }
                         }
                     })
-                    AddGitlabAccountEntryDialog(project).show()
+                    AddGitlabAccountEntryDialog(project, addNewAccountDirectly = true).show()
                     connection.deliverImmediately()
                     connection.disconnect()
                 }.withLargeLeftGap()

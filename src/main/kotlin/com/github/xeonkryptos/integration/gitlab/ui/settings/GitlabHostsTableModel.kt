@@ -2,11 +2,13 @@ package com.github.xeonkryptos.integration.gitlab.ui.settings
 
 import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabAccountStateNotifier
+import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabHostSettings
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabSettings
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.service
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import javax.swing.SwingUtilities
 import javax.swing.table.AbstractTableModel
@@ -40,20 +42,20 @@ class GitlabHostsTableModel(private val originalSettings: GitlabSettings) : Abst
 
     override fun getColumnName(column: Int): String? {
         return when (column) {
-            0 -> GitlabBundle.message("settings.general.table.column.host")
-            1 -> GitlabBundle.message("settings.general.table.column.certificates")
-            2 -> GitlabBundle.message("settings.general.table.column.username")
-            3 -> GitlabBundle.message("settings.general.table.column.resolve")
+            0    -> GitlabBundle.message("settings.general.table.column.host")
+            1    -> GitlabBundle.message("settings.general.table.column.certificates")
+            2    -> GitlabBundle.message("settings.general.table.column.username")
+            3    -> GitlabBundle.message("settings.general.table.column.resolve")
             else -> null
         }
     }
 
     override fun getColumnClass(column: Int): Class<*>? {
         return when (column) {
-            0 -> String::class.java
-            1 -> Boolean::class.java
-            2 -> String::class.java
-            3 -> Boolean::class.java
+            0    -> String::class.java
+            1    -> Boolean::class.java
+            2    -> String::class.java
+            3    -> Boolean::class.java
             else -> null
         }
     }
@@ -64,15 +66,15 @@ class GitlabHostsTableModel(private val originalSettings: GitlabSettings) : Abst
         val userObject = flattenedSettings[row]
         if (userObject is GitlabHostSettings) {
             return when (column) {
-                0 -> userObject.gitlabHost
-                1 -> userObject.disableSslVerification
+                0    -> userObject.gitlabHost
+                1    -> userObject.disableSslVerification
                 else -> null
             }
         }
         if (userObject is GitlabAccount) {
             return when (column) {
-                2 -> userObject.username
-                3 -> userObject.resolveOnlyOwnProjects
+                2    -> userObject.username
+                3    -> userObject.resolveOnlyOwnProjects
                 else -> null
             }
         }
@@ -98,9 +100,11 @@ class GitlabHostsTableModel(private val originalSettings: GitlabSettings) : Abst
 
     private fun registerNewGitlabAccount(createdGitlabAccount: GitlabAccount) {
         val gitlabHost: String = createdGitlabAccount.getGitlabHost()
-        val containedHostSettingsAlready = !currentSettings.containsGitlabHostSettings(gitlabHost)
-        val currentGitlabHostSettings = currentSettings.getOrCreateGitlabHostSettings(gitlabHost)
-        currentGitlabHostSettings.addGitlabAccount(createdGitlabAccount)
+        val containedHostSettingsAlready = currentSettings.containsGitlabHostSettings(gitlabHost)
+        val currentGitlabHostSettings = currentSettings.getOrCreateGitlabHostSettings(gitlabHost).apply {
+            createdGitlabAccount.getGitlabHostSettingsOwner()?.let { updateWith(it) }
+            addGitlabAccount(createdGitlabAccount)
+        }
         if (!containedHostSettingsAlready) {
             val originalGitlabHostSetting = originalSettings.gitlabHostSettings[gitlabHost]
             if (originalGitlabHostSetting != null) currentGitlabHostSettings.updateWith(originalGitlabHostSetting)
@@ -144,6 +148,16 @@ class GitlabHostsTableModel(private val originalSettings: GitlabSettings) : Abst
 
     @RequiresEdt
     fun reset() {
+        // Find newly added accounts and delete the authentication information. They aren't required anymore
+        val addedGitlabAccounts: MutableList<GitlabAccount> = ArrayList(currentSettings.getAllGitlabAccounts())
+        val originalAccounts: Set<GitlabAccount> = HashSet(originalSettings.getAllGitlabAccounts())
+        addedGitlabAccounts.removeIf { originalAccounts.contains(it) }
+
+        if (addedGitlabAccounts.isNotEmpty()) {
+            val authenticationManager = service<AuthenticationManager>()
+            addedGitlabAccounts.forEach { authenticationManager.deleteAuthenticationFor(it) }
+        }
+
         currentSettings = originalSettings.deepCopy()
         flattenedSettings.clear()
         rebuildFlattenedSettings()

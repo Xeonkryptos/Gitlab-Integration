@@ -22,6 +22,8 @@
 - Initial loading of projects when sign in for the first time in clone dialog
 - Sign in issues when downloading of the user's avatar failed for unknown reasons
 - Detection of projects already on a known Gitlab instance
+- Not stored deactivation of SSL verification after login procedure
+- Remove gitlab account credentials on reset in gitlab settings dialog
 
 ### Security
 

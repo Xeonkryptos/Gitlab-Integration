@@ -4,8 +4,10 @@ import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabUserApi
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabUser
 import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
+import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabHostSettings
+import com.github.xeonkryptos.integration.gitlab.service.data.GitlabSettings
 import com.github.xeonkryptos.integration.gitlab.ui.clone.GitlabLoginData
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.Disposable
@@ -21,7 +23,7 @@ import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import java.util.function.Consumer
 
-class LoginTask(project: Project, private val gitlabLoginData: GitlabLoginData, private val loginNotificationListener: Consumer<String?>? = null) :
+class LoginTask(project: Project, private val gitlabLoginData: GitlabLoginData, private val addNewAccountDirectly: Boolean = false, private val loginNotificationListener: Consumer<String?>? = null) :
     Task.Backgroundable(project, GitlabBundle.message("action.gitlab.accounts.user.information.download"), true, ALWAYS_BACKGROUND), Disposable {
 
     private companion object {
@@ -29,6 +31,7 @@ class LoginTask(project: Project, private val gitlabLoginData: GitlabLoginData, 
     }
 
     private val authenticationManager: AuthenticationManager = service()
+    private val gitlabSettings: GitlabSettings = service<GitlabSettingsService>().state
     private val gitlabUserApi: GitlabUserApi = service()
 
     private val gitlabHostSettings: GitlabHostSettings = GitlabHostSettings(gitlabLoginData.gitlabHost).apply { disableSslVerification = gitlabLoginData.disableCertificateValidation }
@@ -51,7 +54,12 @@ class LoginTask(project: Project, private val gitlabLoginData: GitlabLoginData, 
             val gitlabUser: GitlabUser = gitlabUserApi.loadGitlabUser(gitlabHostSettings, gitlabLoginData.gitlabAccessToken)
 
             indicator.checkCanceled()
-            val localGitlabAccount = gitlabHostSettings.createGitlabAccount(gitlabUser.username).apply { userId = gitlabUser.userId }
+
+            val gitlabHostSettingsToUse = if (addNewAccountDirectly) {
+                gitlabSettings.getOrCreateGitlabHostSettings(gitlabHostSettings.gitlabHost).apply { updateWith(gitlabHostSettings) }
+            } else gitlabHostSettings
+
+            val localGitlabAccount = gitlabHostSettingsToUse.createGitlabAccount(gitlabUser.username).apply { userId = gitlabUser.userId }
             gitlabAccount = localGitlabAccount
             authenticationManager.storeAuthentication(localGitlabAccount, gitlabLoginData.gitlabAccessToken)
 
