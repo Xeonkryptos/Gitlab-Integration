@@ -19,6 +19,8 @@ import com.github.xeonkryptos.integration.gitlab.ui.general.event.PagingEvent
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.PagingEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.ReloadDataEvent
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.ReloadDataEventListener
+import com.github.xeonkryptos.integration.gitlab.util.GitlabNotificationIdsHolder
+import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
@@ -39,6 +41,7 @@ import com.intellij.util.ui.cloneDialog.VcsCloneDialogUiSpec
 import com.jetbrains.rd.util.firstOrNull
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import java.util.Collections
 import javax.swing.ImageIcon
 import javax.swing.JLabel
 import javax.swing.SwingUtilities
@@ -49,8 +52,13 @@ import javax.swing.SwingUtilities
  */
 class CloneRepositoryUIControl(private val project: Project, val ui: CloneRepositoryUI) {
 
+    private companion object {
+        val LOG = GitlabUtil.LOG
+    }
+
     private val gitlabUserApi = service<GitlabUserApi>()
     private val gitlabProjectsApi = service<GitlabProjectsApi>()
+
     private val gitlabSettings = service<GitlabSettingsService>().state
     private val authenticationManager = service<AuthenticationManager>()
 
@@ -119,12 +127,10 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
             accountActions += AccountMenuItem.Action(GitlabBundle.message("open.on.gitlab.action"), { BrowserUtil.browse(userEntry.value.server) }, AllIcons.Ide.External_link_arrow)
             val signedIn: Boolean = authenticationManager.hasAuthenticationTokenFor(userEntry.key)
             if (!signedIn) {
-                accountActions += AccountMenuItem.Action(
-                    GitlabBundle.message("accounts.log.in"),
-                    { // TODO: Make it possible to re-enter token. Keep in mind: A token is user-specific and a token for another account might be added. Thus, results in another account!
-                    },
-                    showSeparatorAbove = true
-                )
+                accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.log.in"),
+                                                         { // TODO: Make it possible to re-enter token. Keep in mind: A token is user-specific and a token for another account might be added. Thus, results in another account!
+                                                         },
+                                                         showSeparatorAbove = true)
             }
             accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.log.out"), {
                 authenticationManager.deleteAuthenticationFor(userEntry.key)
@@ -174,7 +180,13 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
 
             override fun run(indicator: ProgressIndicator) {
                 val gitlabAccounts = loadAccounts()
-                val localGitlabProjectsMap = gitlabProjectsApi.retrieveGitlabProjectsFor(gitlabAccounts)
+                var localGitlabProjectsMap: Map<GitlabAccount, PagerProxy<List<GitlabProject>>> = Collections.emptyMap()
+                try {
+                    localGitlabProjectsMap = gitlabProjectsApi.retrieveGitlabProjectsFor(gitlabAccounts)
+                } catch (e: Exception) {
+                    GitlabNotifications.showError(project, GitlabNotificationIdsHolder.LOAD_GITLAB_ACCOUNTS_FAILED, GitlabBundle.message("load.gitlab.projects.failed", e), e)
+                    LOG.warn(e)
+                }
                 gitlabProjectsMap = localGitlabProjectsMap
                 updatePagingPointers(localGitlabProjectsMap.values)
 
@@ -190,7 +202,13 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
 
             override fun run(indicator: ProgressIndicator) {
                 val gitlabAccounts: Collection<GitlabAccount> = gitlabProjectsMap?.keys ?: loadAccounts()
-                val localGitlabProjectsMap = gitlabProjectsApi.retrieveGitlabProjectsFor(gitlabAccounts, globalSearchText)
+                var localGitlabProjectsMap: Map<GitlabAccount, PagerProxy<List<GitlabProject>>> = Collections.emptyMap()
+                try {
+                    localGitlabProjectsMap = gitlabProjectsApi.retrieveGitlabProjectsFor(gitlabAccounts, globalSearchText)
+                } catch (e: Exception) {
+                    GitlabNotifications.showError(project, GitlabNotificationIdsHolder.LOAD_GITLAB_ACCOUNTS_FAILED, GitlabBundle.message("load.gitlab.projects.failed", e), e)
+                    LOG.warn(e)
+                }
                 gitlabProjectsMap = localGitlabProjectsMap
                 updatePagingPointers(localGitlabProjectsMap.values)
 
@@ -202,7 +220,13 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
 
     private fun loadAccounts(): List<GitlabAccount> {
         val gitlabAccounts: List<GitlabAccount> = gitlabSettings.getAllGitlabAccountsBy { authenticationManager.hasAuthenticationTokenFor(it) }
-        val gitlabUsersMap = gitlabUserApi.retrieveGitlabUsersFor(gitlabAccounts)
+        var gitlabUsersMap: Map<GitlabAccount, GitlabUser> = Collections.emptyMap()
+        try {
+            gitlabUsersMap = gitlabUserApi.retrieveGitlabUsersFor(gitlabAccounts)
+        } catch (e: Exception) {
+            GitlabNotifications.showError(project, GitlabNotificationIdsHolder.LOAD_GITLAB_ACCOUNTS_FAILED, GitlabBundle.message("load.gitlab.accounts.failed", e), e)
+            LOG.warn(e)
+        }
 
         SwingUtilities.invokeLater {
             val firstUserEntry = gitlabUsersMap.firstOrNull()

@@ -14,4 +14,6 @@ object GitlabNotificationIdsHolder {
     const val SHARE_PROJECT_INIT_COMMIT_FAILED = "gitlab.share.project.created.init.commit.failed"
     const val SHARE_PROJECT_INIT_PUSH_FAILED = "gitlab.share.init.push.failed"
     const val GIT_REPO_INIT_REPO = "gitlab.git.repo.init.error"
+    const val LOAD_GITLAB_ACCOUNTS_FAILED = "gitlab.load.accounts.failed"
+    const val LOAD_GITLAB_PROJECTS_FAILED = "gitlab.load.projects.failed"
 }

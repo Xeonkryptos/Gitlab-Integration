@@ -6,13 +6,13 @@
 
 ### Added
 
+- Show message notification bubble when loading of projects or accounts fail
+
 ### Changed
 
 - Show error messages separately when they can't be assigned to a specific UI component (i.e., on login error messages
   when embedded in clone dialog)
 - Moved general Gitlab settings entry point into Version Control
-
-### Deprecated
 
 ### Removed
 
@@ -23,9 +23,10 @@
 - Sign in issues when downloading of the user's avatar failed for unknown reasons
 - Detection of projects already on a known Gitlab instance
 - Not stored deactivation of SSL verification after login procedure
-- Remove gitlab account credentials on reset in gitlab settings dialog
 
 ### Security
+
+- Remove gitlab account credentials on reset in gitlab settings dialog
 
 ## [0.0.1-alpha]
 
