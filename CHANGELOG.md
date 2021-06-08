@@ -23,6 +23,8 @@
 - Sign in issues when downloading of the user's avatar failed for unknown reasons
 - Detection of projects already on a known Gitlab instance
 - Not stored deactivation of SSL verification after login procedure
+- Incorrect checkbox state in gitlab settings view for disable SSL verification (typically marked as disabled when
+  enabled)
 
 ### Security
 

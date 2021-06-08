@@ -6,7 +6,6 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.util.messages.MessageBus
 import com.intellij.util.xmlb.annotations.OptionTag
 import com.intellij.util.xmlb.annotations.XCollection
-import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -96,6 +95,7 @@ data class GitlabHostSettings(@Volatile var gitlabHost: String = "") {
             newGitlabAccount.setGitlabHostSettingsOwner(newGitlabHostSettings)
             newGitlabAccounts.add(newGitlabAccount)
         }
+        newGitlabHostSettings.disableSslVerification = disableSslVerification
         newGitlabHostSettings.mutableGitlabAccounts.addAll(newGitlabAccounts)
         return newGitlabHostSettings
     }
