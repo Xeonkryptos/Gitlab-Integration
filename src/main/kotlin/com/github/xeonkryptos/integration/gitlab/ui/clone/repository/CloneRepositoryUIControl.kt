@@ -5,7 +5,6 @@ import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabProjectsApi
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabUserApi
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabProject
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabUser
-import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabAccountStateNotifier
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabLoginChangeNotifier
 import com.github.xeonkryptos.integration.gitlab.service.AuthenticationManager
@@ -19,6 +18,7 @@ import com.github.xeonkryptos.integration.gitlab.ui.general.event.PagingEvent
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.PagingEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.ReloadDataEvent
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.ReloadDataEventListener
+import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.util.GitlabNotificationIdsHolder
 import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
@@ -41,7 +41,6 @@ import com.intellij.util.ui.cloneDialog.VcsCloneDialogUiSpec
 import com.jetbrains.rd.util.firstOrNull
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
-import java.util.Collections
 import javax.swing.ImageIcon
 import javax.swing.JLabel
 import javax.swing.SwingUtilities
@@ -116,7 +115,7 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
         val menuItems = mutableListOf<AccountMenuItem>()
 
         val settingsService = service<GitlabSettingsService>()
-        val gitlabUsersPerAccount = service<GitlabUserApi>().retrieveGitlabUsersFor(settingsService.state.getAllGitlabAccounts())
+        val gitlabUsersPerAccount = service<GitlabUserApi>().retrieveGitlabUsersFor(project, settingsService.state.getAllGitlabAccounts())
         for ((index, userEntry) in gitlabUsersPerAccount.entries.withIndex()) {
             val accountTitle = userEntry.value.name
 
@@ -180,13 +179,7 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
 
             override fun run(indicator: ProgressIndicator) {
                 val gitlabAccounts = loadAccounts()
-                var localGitlabProjectsMap: Map<GitlabAccount, PagerProxy<List<GitlabProject>>> = Collections.emptyMap()
-                try {
-                    localGitlabProjectsMap = gitlabProjectsApi.retrieveGitlabProjectsFor(gitlabAccounts)
-                } catch (e: Exception) {
-                    GitlabNotifications.showError(project, GitlabNotificationIdsHolder.LOAD_GITLAB_ACCOUNTS_FAILED, GitlabBundle.message("load.gitlab.projects.failed", e), e)
-                    LOG.warn(e)
-                }
+                val localGitlabProjectsMap = gitlabProjectsApi.retrieveGitlabProjectsFor(project, gitlabAccounts)
                 gitlabProjectsMap = localGitlabProjectsMap
                 updatePagingPointers(localGitlabProjectsMap.values)
 
@@ -202,13 +195,7 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
 
             override fun run(indicator: ProgressIndicator) {
                 val gitlabAccounts: Collection<GitlabAccount> = gitlabProjectsMap?.keys ?: loadAccounts()
-                var localGitlabProjectsMap: Map<GitlabAccount, PagerProxy<List<GitlabProject>>> = Collections.emptyMap()
-                try {
-                    localGitlabProjectsMap = gitlabProjectsApi.retrieveGitlabProjectsFor(gitlabAccounts, globalSearchText)
-                } catch (e: Exception) {
-                    GitlabNotifications.showError(project, GitlabNotificationIdsHolder.LOAD_GITLAB_ACCOUNTS_FAILED, GitlabBundle.message("load.gitlab.projects.failed", e), e)
-                    LOG.warn(e)
-                }
+                val localGitlabProjectsMap = gitlabProjectsApi.retrieveGitlabProjectsFor(project, gitlabAccounts, globalSearchText)
                 gitlabProjectsMap = localGitlabProjectsMap
                 updatePagingPointers(localGitlabProjectsMap.values)
 
@@ -220,13 +207,7 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
 
     private fun loadAccounts(): List<GitlabAccount> {
         val gitlabAccounts: List<GitlabAccount> = gitlabSettings.getAllGitlabAccountsBy { authenticationManager.hasAuthenticationTokenFor(it) }
-        var gitlabUsersMap: Map<GitlabAccount, GitlabUser> = Collections.emptyMap()
-        try {
-            gitlabUsersMap = gitlabUserApi.retrieveGitlabUsersFor(gitlabAccounts)
-        } catch (e: Exception) {
-            GitlabNotifications.showError(project, GitlabNotificationIdsHolder.LOAD_GITLAB_ACCOUNTS_FAILED, GitlabBundle.message("load.gitlab.accounts.failed", e), e)
-            LOG.warn(e)
-        }
+        val gitlabUsersMap = gitlabUserApi.retrieveGitlabUsersFor(project, gitlabAccounts)
 
         SwingUtilities.invokeLater {
             val firstUserEntry = gitlabUsersMap.firstOrNull()
@@ -241,7 +222,14 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
         progressIndicator.run(object : Task.Backgroundable(project, "Previous repositories download", true, ALWAYS_BACKGROUND) {
             override fun run(indicator: ProgressIndicator) {
                 gitlabProjectsMap?.let {
-                    it.values.forEach { pagerProxy -> pagerProxy.loadPreviousPage() }
+                    it.values.forEach { pagerProxy ->
+                        try {
+                            pagerProxy.loadPreviousPage()
+                        } catch (e: Exception) {
+                            GitlabNotifications.showError(project, GitlabNotificationIdsHolder.LOAD_GITLAB_ACCOUNTS_FAILED, GitlabBundle.message("load.gitlab.projects.failed", e), e)
+                            LOG.warn(e)
+                        }
+                    }
                     updatePagingPointers(it.values)
                     SwingUtilities.invokeLater { updateAccountProjects() }
                 }
@@ -253,7 +241,14 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
         progressIndicator.run(object : Task.Backgroundable(project, "Next repositories download", true, ALWAYS_BACKGROUND) {
             override fun run(indicator: ProgressIndicator) {
                 gitlabProjectsMap?.let {
-                    it.values.forEach { pagerProxy -> pagerProxy.loadNextPage() }
+                    it.values.forEach { pagerProxy ->
+                        try {
+                            pagerProxy.loadNextPage()
+                        } catch (e: Exception) {
+                            GitlabNotifications.showError(project, GitlabNotificationIdsHolder.LOAD_GITLAB_ACCOUNTS_FAILED, GitlabBundle.message("load.gitlab.projects.failed", e), e)
+                            LOG.warn(e)
+                        }
+                    }
                     updatePagingPointers(it.values)
                     SwingUtilities.invokeLater { updateAccountProjects() }
                 }

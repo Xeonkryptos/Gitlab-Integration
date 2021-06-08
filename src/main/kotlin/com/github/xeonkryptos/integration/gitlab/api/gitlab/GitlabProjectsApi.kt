@@ -6,7 +6,11 @@ import com.github.xeonkryptos.integration.gitlab.api.PagerProxy
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabProject
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabVisibility
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
+import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
+import com.github.xeonkryptos.integration.gitlab.util.GitlabNotificationIdsHolder
+import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
+import com.intellij.openapi.project.Project
 import jakarta.ws.rs.client.Entity
 import jakarta.ws.rs.core.GenericType
 import jakarta.ws.rs.core.Response
@@ -26,7 +30,7 @@ class GitlabProjectsApi : BaseGitlabApi() {
         fun createNewProjectUrl(gitlabAccount: GitlabAccount): URI = UriBuilder.fromUri(gitlabAccount.getTargetGitlabHost()).path(PROJECTS_API_PATH).build()
     }
 
-    fun retrieveGitlabProjectsFor(gitlabAccounts: Collection<GitlabAccount>, searchText: String? = null): Map<GitlabAccount, PagerProxy<List<GitlabProject>>> {
+    fun retrieveGitlabProjectsFor(project: Project, gitlabAccounts: Collection<GitlabAccount>, searchText: String? = null): Map<GitlabAccount, PagerProxy<List<GitlabProject>>> {
         val accountProjects = mutableMapOf<GitlabAccount, PagerProxy<List<GitlabProject>>>()
         gitlabAccounts.filter { authenticationManager.hasAuthenticationTokenFor(it) }.forEach { gitlabAccount ->
             try {
@@ -50,6 +54,7 @@ class GitlabProjectsApi : BaseGitlabApi() {
                 accountProjects[gitlabAccount] = pagerProxy
                 pagerProxy.loadFirstPage()
             } catch (e: Exception) {
+                GitlabNotifications.showError(project, GitlabNotificationIdsHolder.LOAD_GITLAB_ACCOUNTS_FAILED, GitlabBundle.message("load.gitlab.projects.failed", e), e)
                 LOG.warn("Failed to retrieve project information for gitlab account $gitlabAccount", e)
             }
         }

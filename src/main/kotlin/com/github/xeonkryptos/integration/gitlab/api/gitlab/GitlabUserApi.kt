@@ -3,8 +3,12 @@ package com.github.xeonkryptos.integration.gitlab.api.gitlab
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabUser
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabHostSettings
+import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
+import com.github.xeonkryptos.integration.gitlab.util.GitlabNotificationIdsHolder
+import com.github.xeonkryptos.integration.gitlab.util.GitlabNotifications
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.components.service
+import com.intellij.openapi.project.Project
 
 /**
  * @author Xeonkryptos
@@ -16,7 +20,7 @@ class GitlabUserApi : BaseGitlabApi() {
         private val LOG = GitlabUtil.LOG
     }
 
-    fun retrieveGitlabUsersFor(gitlabAccounts: Collection<GitlabAccount>): Map<GitlabAccount, GitlabUser> {
+    fun retrieveGitlabUsersFor(project: Project, gitlabAccounts: Collection<GitlabAccount>): Map<GitlabAccount, GitlabUser> {
         val users = mutableMapOf<GitlabAccount, GitlabUser>()
         gitlabAccounts.filter { authenticationManager.hasAuthenticationTokenFor(it) }.forEach { gitlabAccount ->
             try {
@@ -25,6 +29,7 @@ class GitlabUserApi : BaseGitlabApi() {
                 val invocation = authenticationManager.enrichRequestWithToken(baseRequest, gitlabAccount).buildGet()
                 users[gitlabAccount] = invocation.invoke(GitlabUser::class.java)
             } catch (e: Exception) {
+                GitlabNotifications.showError(project, GitlabNotificationIdsHolder.LOAD_GITLAB_ACCOUNTS_FAILED, GitlabBundle.message("load.gitlab.accounts.failed", e), e)
                 LOG.warn("Failed to retrieve user information for gitlab account $gitlabAccount", e)
             }
         }
