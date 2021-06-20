@@ -23,6 +23,8 @@ import com.intellij.openapi.vcs.ui.CommitMessage
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.util.containers.ContainerUtil
 import com.intellij.vcsUtil.VcsFileUtil
+import git4idea.GitUtil
+import git4idea.actions.GitInit
 import git4idea.commands.Git
 import git4idea.commands.GitCommand
 import git4idea.commands.GitLineHandler
@@ -55,6 +57,9 @@ class CreateNewGitRepoAndShareTask(project: Project, projectLinkingConfiguration
             project.service<VcsNotifier>().notifyError(GitlabNotificationIdsHolder.GIT_REPO_INIT_REPO, GitBundle.message("initializing.title"), initResult.errorOutputAsHtmlString)
             return
         }
+        GitInit.refreshAndConfigureVcsMappings(project, projectLinkingConfiguration.rootDir, projectLinkingConfiguration.rootDir.path)
+        GitUtil.generateGitignoreFileIfNeeded(project, projectLinkingConfiguration.rootDir)
+
         indicator.checkCanceled()
         LOG.info("Adding Gitlab as a remote host")
         indicator.text = GitlabBundle.message("share.process.adding.gitlab.as.remote.host")

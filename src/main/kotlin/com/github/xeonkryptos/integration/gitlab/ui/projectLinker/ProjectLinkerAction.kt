@@ -1,7 +1,7 @@
 package com.github.xeonkryptos.integration.gitlab.ui.projectLinker
 
-import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.GitlabSettingsService
+import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
@@ -11,6 +11,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtil
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
@@ -44,19 +45,21 @@ class ProjectLinkerAction : DumbAwareAction(GitlabBundle.message("share.action")
         val allGitlabAccounts = gitlabSettingsService.state.getAllGitlabAccounts()
 
         val module: Module? = if (file != null) ModuleUtil.findModuleForFile(file, project) else null
+        val projectFileIndex: ProjectFileIndex = project.service()
 
         val projectRootManager = ProjectRootManager.getInstance(project)
         val gitRepositoryManager = project.service<GitRepositoryManager>()
         val repositories = projectRootManager.contentRoots.mapNotNull { gitRepositoryManager.getRepositoryForFileQuick(it) }
         if (repositories.isNotEmpty()) {
             val knownGitlabDomains = allGitlabAccounts.map { it.getGitlabDomainWithoutPort() }
-            val knownGitlabRemoteConfigurations = repositories.asSequence().flatMap { it.remotes }.flatMap { remote -> remote.urls }.mapNotNull {
-                val gitRemoteHost = GitlabUtil.getGitlabDomainWithoutPort(it)
-                for (knownGitlabDomain in knownGitlabDomains) {
-                    if (gitRemoteHost == knownGitlabDomain) return@mapNotNull it
-                }
-                return@mapNotNull null
-            }.toList()
+            val knownGitlabRemoteConfigurations =
+                repositories.asSequence().filter { module == null || module == projectFileIndex.getModuleForFile(it.root) }.flatMap { it.remotes }.flatMap { remote -> remote.urls }.mapNotNull {
+                    val gitRemoteHost = GitlabUtil.getGitlabDomainWithoutPort(it)
+                    for (knownGitlabDomain in knownGitlabDomains) {
+                        if (gitRemoteHost == knownGitlabDomain) return@mapNotNull it
+                    }
+                    return@mapNotNull null
+                }.toList()
             if (knownGitlabRemoteConfigurations.isNotEmpty()) {
                 if (!GitlabExistingRemotesDialog(project, knownGitlabRemoteConfigurations).showAndGet()) return
             }
