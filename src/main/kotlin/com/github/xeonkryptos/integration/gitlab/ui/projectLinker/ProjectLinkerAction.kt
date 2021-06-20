@@ -13,19 +13,25 @@ import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.openapi.roots.ui.componentsList.components.ScrollablePanel
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
 import com.intellij.ui.components.BrowserLink
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import git4idea.repo.GitRepositoryManager
 import java.awt.BorderLayout
 import java.awt.Container
+import java.awt.Dimension
 import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JLabel
-import javax.swing.JPanel
+import javax.swing.ScrollPaneConstants
+import javax.swing.SwingConstants
+import javax.swing.border.EmptyBorder
+import kotlin.math.min
 
 class ProjectLinkerAction : DumbAwareAction(GitlabBundle.message("share.action"), GitlabBundle.message("share.action.description"), GitlabUtil.GITLAB_ICON) {
 
@@ -81,7 +87,11 @@ class ProjectLinkerAction : DumbAwareAction(GitlabBundle.message("share.action")
         }
     }
 
-    class GitlabExistingRemotesDialog(project: Project, private val remotes: List<String>) : DialogWrapper(project) {
+    private class GitlabExistingRemotesDialog(project: Project, private val remotes: List<String>) : DialogWrapper(project) {
+
+        companion object {
+            private const val MAX_REMOTE_LINKS_AT_ONCE: Int = 5
+        }
 
         init {
             title = GitlabBundle.message("share.error.project.is.on.gitlab")
@@ -92,14 +102,24 @@ class ProjectLinkerAction : DumbAwareAction(GitlabBundle.message("share.action")
         override fun createCenterPanel(): JComponent {
             val mainText = JBLabel(if (remotes.size == 1) GitlabBundle.message("share.action.remote.is.on.gitlab") else GitlabBundle.message("share.action.remotes.are.on.gitlab"))
 
-            val remotesPanel = JPanel().apply {
+            val remotesPanel = object : ScrollablePanel() {
+                override fun getPreferredScrollableViewportSize(): Dimension {
+                    val maxRemotesAtOnce = min(remotes.size, MAX_REMOTE_LINKS_AT_ONCE)
+                    // Using getScrollableUnitIncrement() because the base class ScrollablePane keeps track of the font metrics to compute the height of the visible text. Just making use of the already
+                    // stored data and restrict the number of elements to see at max at once.
+                    val preferredHeight = getScrollableUnitIncrement(null, SwingConstants.VERTICAL, 0) * maxRemotesAtOnce
+                    return Dimension(preferredSize.width, preferredHeight)
+                }
+            }.apply {
                 layout = BoxLayout(this, BoxLayout.Y_AXIS)
             }
-            for (remote in remotes) {
-                remotesPanel.add(BrowserLink(remote, remote))
-            }
+            remotes.forEach { remotesPanel.add(BrowserLink(it, it)) }
 
-            val messagesPanel = JBUI.Panels.simplePanel(UIUtil.DEFAULT_HGAP, UIUtil.DEFAULT_VGAP).addToTop(mainText).addToCenter(remotesPanel)
+            val remotesScrollPane = JBScrollPane(remotesPanel).apply {
+                horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+                border = EmptyBorder(0, 0, 0, 0)
+            }
+            val messagesPanel = JBUI.Panels.simplePanel(UIUtil.DEFAULT_HGAP, UIUtil.DEFAULT_VGAP).addToTop(mainText).addToCenter(remotesScrollPane)
 
             val iconContainer = Container().apply {
                 layout = BorderLayout()
