@@ -14,8 +14,6 @@
   when embedded in clone dialog)
 - Moved general Gitlab settings entry point into Version Control
 
-### Removed
-
 ### Fixed
 
 - Ignoring of disabled ssl verification when signing in for the first time via login dialog
