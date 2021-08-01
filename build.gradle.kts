@@ -21,6 +21,7 @@ version = properties("pluginVersion")
 repositories {
     mavenCentral()
 }
+
 dependencies {
     implementation("org.glassfish.jersey.core:jersey-client:3.0.1")
     implementation("org.glassfish.jersey.media:jersey-media-json-jackson:3.0.1") {
