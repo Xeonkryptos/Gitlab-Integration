@@ -3,6 +3,7 @@
 # Gitlab-Integration Changelog
 
 ## [Unreleased]
+## [0.0.3-alpha]
 
 ### Changed
 
