@@ -3,6 +3,11 @@
 # Gitlab-Integration Changelog
 
 ## [Unreleased]
+
+### Changed
+
+- Made compatible to the newest IntelliJ IDE platform version
+
 ## [0.0.2-alpha]
 
 ### Added
