@@ -1,17 +1,18 @@
 package com.github.xeonkryptos.integration.gitlab.ui.clone.repository
 
-import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.ui.clone.repository.event.ClonePathEvent
 import com.github.xeonkryptos.integration.gitlab.ui.clone.repository.event.ClonePathEventListener
+import com.github.xeonkryptos.integration.gitlab.ui.general.CustomListToolbarDecorator
+import com.github.xeonkryptos.integration.gitlab.ui.general.NextActionButton
+import com.github.xeonkryptos.integration.gitlab.ui.general.PreviousActionButton
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.GlobalSearchTextEvent
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.GlobalSearchTextEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.PagingEvent
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.PagingEventListener
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.ReloadDataEvent
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.ReloadDataEventListener
-import com.github.xeonkryptos.integration.gitlab.ui.general.CustomListToolbarDecorator
-import com.github.xeonkryptos.integration.gitlab.ui.general.NextActionButton
-import com.github.xeonkryptos.integration.gitlab.ui.general.PreviousActionButton
+import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
+import com.intellij.collaboration.ui.CollaborationToolsUIUtil
 import com.intellij.dvcs.repo.ClonePathProvider
 import com.intellij.dvcs.ui.DvcsBundle
 import com.intellij.dvcs.ui.SelectChildTextFieldWithBrowseButton
@@ -20,11 +21,12 @@ import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.project.Project
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.KeyStrokeAdapter
+import com.intellij.ui.SearchTextField
+import com.intellij.ui.components.JBList
 import com.intellij.ui.layout.ComponentPredicate
 import com.intellij.ui.layout.LCFlags
 import com.intellij.ui.layout.panel
 import com.intellij.util.ui.JBUI
-import com.intellij.util.ui.cloneDialog.ListWithSearchComponent
 import git4idea.remote.GitRememberedInputs
 import java.awt.FlowLayout
 import java.awt.event.KeyEvent
@@ -43,24 +45,27 @@ class CloneRepositoryUI(private val project: Project) : Disposable {
 
     internal val repositoryModel: CloneRepositoryUIModel = CloneRepositoryUIModel()
     internal val usersPanel: JPanel = JPanel(FlowLayout(FlowLayout.LEADING, JBUI.scale(1), 0))
-    internal val listWithSearchComponent: ListWithSearchComponent<GitlabProjectListItem> =
-        ListWithSearchComponent(repositoryModel, GitlabProjectListCellRenderer { repositoryModel.availableAccounts }).apply {
-            list.selectionModel.addListSelectionListener {
-                val selectedProject = list.selectedValue?.gitlabProject
+    internal val searchField: SearchTextField = SearchTextField(false).apply {
+        addKeyboardListener(object : KeyStrokeAdapter() {
+            override fun keyTyped(event: KeyEvent?) {
+                if (event?.isControlDown == true && event.keyChar == KeyEvent.VK_ENTER.toChar()) {
+                    val globalSearchTextEvent = GlobalSearchTextEvent(this, text)
+                    fireGlobalSearchTextChanged(globalSearchTextEvent)
+                }
+            }
+        })
+    }
+    internal val gitlabProjectItemsList: JBList<GitlabProjectListItem> =
+        JBList(repositoryModel).apply {
+            cellRenderer = GitlabProjectListCellRenderer { repositoryModel.availableAccounts }
+            selectionModel.addListSelectionListener {
+                val selectedProject = selectedValue?.gitlabProject
                 val clonePathEvent = ClonePathEvent(this, selectedProject)
                 fireClonePathChangedEvent(clonePathEvent)
             }
-            searchField.addKeyboardListener(object : KeyStrokeAdapter() {
-                override fun keyTyped(event: KeyEvent?) {
-                    if (event?.isControlDown == true && event.keyChar == KeyEvent.VK_ENTER.toChar()) {
-                        val globalSearchTextEvent = GlobalSearchTextEvent(this, searchField.text)
-                        fireGlobalSearchTextChanged(globalSearchTextEvent)
-                    }
-                }
-            })
         }
     private val repositoryListPanel: JPanel by lazy {
-        CustomListToolbarDecorator(listWithSearchComponent.list).initPosition()
+        CustomListToolbarDecorator(gitlabProjectItemsList).initPosition()
             .disableUpAction()
             .disableDownAction()
             .disableAddAction()
@@ -81,22 +86,23 @@ class CloneRepositoryUI(private val project: Project) : Disposable {
     private var controller: CloneRepositoryUIControl = CloneRepositoryUIControl(project, this)
 
     init {
+        CollaborationToolsUIUtil.attachSearch(gitlabProjectItemsList, searchField) { it.gitlabProject.viewableProjectPath }
         repositoryPanel = panel(LCFlags.fill) {
             row {
                 cell(isFullWidth = true) {
-                    listWithSearchComponent.searchField(growX, pushX)
+                    searchField(growX, pushX)
                     button(GitlabBundle.message("button.globalSearch")) {
-                        val searchText: String? = listWithSearchComponent.searchField.text
+                        val searchText: String? = searchField.text
                         if (searchText?.isNotBlank() == true) {
                             fireGlobalSearchTextChanged(GlobalSearchTextEvent(this, searchText))
                         }
                     }.enableIf(object : ComponentPredicate() {
                         override fun addListener(listener: (Boolean) -> Unit) {
-                            listWithSearchComponent.searchField.addDocumentListener(object : DocumentAdapter() {
+                            searchField.addDocumentListener(object : DocumentAdapter() {
                                 override fun textChanged(e: DocumentEvent) {
                                     listener(invoke())
 
-                                    val searchText: String? = listWithSearchComponent.searchField.text
+                                    val searchText: String? = searchField.text
                                     if (searchText?.isNotBlank() != true) {
                                         fireGlobalSearchTextDeleted(GlobalSearchTextEvent(this, searchText))
                                     }
@@ -104,7 +110,7 @@ class CloneRepositoryUI(private val project: Project) : Disposable {
                             })
                         }
 
-                        override fun invoke(): Boolean = listWithSearchComponent.searchField.text?.isNotBlank() ?: false
+                        override fun invoke(): Boolean = searchField.text?.isNotBlank() ?: false
                     })
                     JSeparator(JSeparator.VERTICAL)(growY).withLargeLeftGap()
                     usersPanel().withLargeLeftGap()

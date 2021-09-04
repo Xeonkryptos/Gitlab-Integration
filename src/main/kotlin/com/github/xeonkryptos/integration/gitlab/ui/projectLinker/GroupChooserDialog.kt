@@ -3,13 +3,14 @@ package com.github.xeonkryptos.integration.gitlab.ui.projectLinker
 import com.github.xeonkryptos.integration.gitlab.api.PagerProxy
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.GitlabGroupsApi
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabGroup
-import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.github.xeonkryptos.integration.gitlab.ui.general.CollectionListModelExt
 import com.github.xeonkryptos.integration.gitlab.ui.general.CustomListToolbarDecorator
 import com.github.xeonkryptos.integration.gitlab.ui.general.NextActionButton
 import com.github.xeonkryptos.integration.gitlab.ui.general.PreviousActionButton
+import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
+import com.intellij.collaboration.ui.CollaborationToolsUIUtil
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.PerformInBackgroundOption
@@ -20,9 +21,10 @@ import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.KeyStrokeAdapter
+import com.intellij.ui.SearchTextField
 import com.intellij.ui.SimpleListCellRenderer
+import com.intellij.ui.components.JBList
 import com.intellij.util.progress.ProgressVisibilityManager
-import com.intellij.util.ui.cloneDialog.ListWithSearchComponent
 import java.awt.event.ActionEvent
 import java.awt.event.KeyEvent
 import javax.swing.Action
@@ -39,25 +41,28 @@ class GroupChooserDialog(private val project: Project, private val gitlabAccount
     }
 
     private val groupsModel: CollectionListModel<GitlabGroup> = CollectionListModelExt()
-    private val listWithSearchComponent = ListWithSearchComponent(groupsModel, object : SimpleListCellRenderer<GitlabGroup>() {
-        override fun customize(list: JList<out GitlabGroup>, value: GitlabGroup?, index: Int, selected: Boolean, hasFocus: Boolean) {
-            text = value?.fullName
-        }
-    }).apply {
-        searchField.addKeyboardListener(object : KeyStrokeAdapter() {
+    private val searchField: SearchTextField = SearchTextField(false).apply {
+        addKeyboardListener(object : KeyStrokeAdapter() {
             override fun keyTyped(event: KeyEvent?) {
                 if (event?.isControlDown == true && event.keyChar == KeyEvent.VK_ENTER.toChar()) {
-                    reload(searchField.text)
+                    reload(text)
                 }
             }
         })
+    }
+    private val gitlabGroupsList = JBList(groupsModel).apply {
+        cellRenderer = object : SimpleListCellRenderer<GitlabGroup>() {
+            override fun customize(list: JList<out GitlabGroup>, value: GitlabGroup?, index: Int, selected: Boolean, hasFocus: Boolean) {
+                text = value?.fullName
+            }
+        }
         searchField.addDocumentListener(object : DocumentAdapter() {
             override fun textChanged(e: DocumentEvent) {
                 if (searchField.text == null || searchField.text.isBlank()) reload(null)
             }
         })
-        list.selectionMode = ListSelectionModel.SINGLE_SELECTION
-        list.selectionModel.addListSelectionListener { this@GroupChooserDialog.isOKActionEnabled = list.selectedValue != null }
+        selectionMode = ListSelectionModel.SINGLE_SELECTION
+        selectionModel.addListSelectionListener { this@GroupChooserDialog.isOKActionEnabled = selectedValue != null }
     }
 
     private val progressIndicator = object : ProgressVisibilityManager() {
@@ -65,7 +70,7 @@ class GroupChooserDialog(private val project: Project, private val gitlabAccount
         override fun getModalityState(): ModalityState = ModalityState.any()
 
         override fun setProgressVisible(visible: Boolean) {
-            listWithSearchComponent.list.setPaintBusy(visible)
+            gitlabGroupsList.setPaintBusy(visible)
         }
     }
     private val gitlabGroupsApi = service<GitlabGroupsApi>()
@@ -75,12 +80,13 @@ class GroupChooserDialog(private val project: Project, private val gitlabAccount
     private var groupsPagerProxy: PagerProxy<List<GitlabGroup>>? = null
 
     val selectedGroup: GitlabGroup?
-        get() = listWithSearchComponent.list.selectedValue
+        get() = gitlabGroupsList.selectedValue
 
     init {
         title = GitlabBundle.message("share.group.chooser.dialog.title")
         isAutoAdjustable = true
         isOKActionEnabled = false
+        CollaborationToolsUIUtil.attachSearch(gitlabGroupsList, searchField) { it.fullName }
         init()
         centerRelativeToParent()
         setOKButtonText(GitlabBundle.message("share.group.chooser.button"))
@@ -90,7 +96,7 @@ class GroupChooserDialog(private val project: Project, private val gitlabAccount
         return arrayOf(okAction, resetAction, cancelAction)
     }
 
-    override fun createCenterPanel(): JComponent = CustomListToolbarDecorator(listWithSearchComponent.list).initPosition()
+    override fun createCenterPanel(): JComponent = CustomListToolbarDecorator(gitlabGroupsList).initPosition()
         .disableUpAction()
         .disableDownAction()
         .disableAddAction()
@@ -148,7 +154,7 @@ class GroupChooserDialog(private val project: Project, private val gitlabAccount
     private inner class ResetAction : DialogWrapperAction(GitlabBundle.message("share.group.chooser.reset.button")) {
 
         override fun doAction(e: ActionEvent?) {
-            listWithSearchComponent.list.selectionModel.clearSelection()
+            gitlabGroupsList.selectionModel.clearSelection()
             close(OK_EXIT_CODE)
         }
     }

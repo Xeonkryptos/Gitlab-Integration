@@ -70,7 +70,7 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
         override fun getModalityState(): ModalityState = ModalityState.any()
 
         override fun setProgressVisible(visible: Boolean) {
-            this@CloneRepositoryUIControl.ui.listWithSearchComponent.list.setPaintBusy(visible)
+            this@CloneRepositoryUIControl.ui.gitlabProjectItemsList.setPaintBusy(visible)
         }
     }
 

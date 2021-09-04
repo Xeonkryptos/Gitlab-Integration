@@ -3,13 +3,9 @@ package com.github.xeonkryptos.integration.gitlab.ui.clone.repository
 import com.github.xeonkryptos.integration.gitlab.api.gitlab.model.GitlabProject
 import com.github.xeonkryptos.integration.gitlab.service.data.GitlabAccount
 import com.intellij.ui.ColoredListCellRenderer
-import com.intellij.util.ui.cloneDialog.SearchableListItem
-import java.util.*
+import java.util.Objects
 
-data class GitlabProjectListItem(val gitlabAccount: GitlabAccount, val gitlabProject: GitlabProject) : SearchableListItem, Comparable<GitlabProjectListItem> {
-
-    override val stringToSearch: String
-        get() = gitlabProject.viewableProjectPath
+data class GitlabProjectListItem(val gitlabAccount: GitlabAccount, val gitlabProject: GitlabProject) :Comparable<GitlabProjectListItem> {
 
     fun customizeRenderer(renderer: ColoredListCellRenderer<GitlabProjectListItem>) = with(renderer) {
         ipad.left = 10
@@ -19,7 +15,7 @@ data class GitlabProjectListItem(val gitlabAccount: GitlabAccount, val gitlabPro
 
     override fun compareTo(other: GitlabProjectListItem): Int {
         if (gitlabAccount == other.gitlabAccount && gitlabProject == other.gitlabProject) {
-            return 0;
+            return 0
         }
         return gitlabProject.viewableProjectPath.compareTo(other.gitlabProject.viewableProjectPath)
     }

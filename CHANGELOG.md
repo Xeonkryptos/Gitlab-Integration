@@ -3,6 +3,11 @@
 # Gitlab-Integration Changelog
 
 ## [Unreleased]
+
+### Changed
+
+- Replaced deprecated class usages
+
 ## [0.0.3-alpha]
 
 ### Changed
