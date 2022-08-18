@@ -45,7 +45,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         private val LOG = GitlabUtil.LOG
     }
 
-    private val gitlabSettings = service<GitlabSettingsService>().state
+    private val gitlabSettings = service<GitlabSettingsService>().getWorkableState()
     private val authenticationManager = service<AuthenticationManager>()
 
     private val wrapper: Wrapper = Wrapper().apply { border = JBEmptyBorder(UIUtil.PANEL_REGULAR_INSETS) }
@@ -88,7 +88,6 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         val connection = ApplicationManager.getApplication().messageBus.connect(this)
         connection.subscribe(GitlabLoginChangeNotifier.LOGIN_STATE_CHANGED_TOPIC, object : GitlabLoginChangeNotifier {
             override fun onSignIn(gitlabAccount: GitlabAccount) {
-                gitlabSettings.registerGitlabAccount(gitlabAccount)
                 SwingUtilities.invokeLater { switchToRepoScenery() }
             }
 
@@ -166,7 +165,7 @@ class GitlabCloneDialogExtensionComponent(private val project: Project) : VcsClo
         if (isInLoginScenery()) {
             list.addAll(gitlabLoginPanel.currentValidationInfo)
         } else {
-            ContainerUtil.addIfNotNull(list, CloneDvcsValidationUtils.checkDirectory(cloneRepositoryUI.directoryField.text, cloneRepositoryUI.directoryField.textField))
+            ContainerUtil.addIfNotNull(list, CloneDvcsValidationUtils.checkDirectory(cloneRepositoryUI.directoryField.text, cloneRepositoryUI.directoryField))
         }
         return list
     }

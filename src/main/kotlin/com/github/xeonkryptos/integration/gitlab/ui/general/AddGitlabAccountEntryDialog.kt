@@ -6,7 +6,7 @@ import com.intellij.openapi.ui.DialogWrapper
 import javax.swing.JComponent
 import javax.swing.SwingUtilities
 
-class AddGitlabAccountEntryDialog(private val project: Project, private val addNewAccountDirectly: Boolean = false) : DialogWrapper(project, true, IdeModalityType.IDE) {
+class AddGitlabAccountEntryDialog(private val project: Project) : DialogWrapper(project, true, IdeModalityType.IDE) {
 
     private val tokenLoginUI: TokenLoginUI = TokenLoginUI(withPanelTitle = false)
 
@@ -28,7 +28,7 @@ class AddGitlabAccountEntryDialog(private val project: Project, private val addN
         // Calling apply here to submit the configured information from the DialogPanel into the variables to retrieve them via tokenLoginUI.getGitlabLoginData()
         tokenLoginUI.dialogPanel.apply()
         val gitlabLoginData = tokenLoginUI.getGitlabLoginData()
-        LoginTask(project, gitlabLoginData, addNewAccountDirectly = addNewAccountDirectly) { result: String? ->
+        LoginTask(project, gitlabLoginData) { result: String? ->
             setErrorText(result)
             if (result == null) SwingUtilities.invokeLater { close(OK_EXIT_CODE) }
         }.doLogin()

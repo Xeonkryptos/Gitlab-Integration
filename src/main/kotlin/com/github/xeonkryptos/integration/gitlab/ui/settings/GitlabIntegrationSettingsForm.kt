@@ -30,7 +30,7 @@ class GitlabIntegrationSettingsForm(private val project: Project) : Disposable {
         get() = gitlabHostsTableModel.isModified()
 
     init {
-        val settings = service<GitlabSettingsService>().state
+        val settings = service<GitlabSettingsService>().getWorkableState()
         gitlabHostsTableModel = GitlabHostsTableModel(settings)
         Disposer.register(this, gitlabHostsTableModel)
 
@@ -59,7 +59,7 @@ class GitlabIntegrationSettingsForm(private val project: Project) : Disposable {
         gitlabHostsTbl = JBTable(gitlabHostsTableModel, tableColumnModel)
         gitlabHostsTbl.setShowGrid(false)
 
-        val onAddAction = AnActionButtonRunnable { AddGitlabAccountEntryDialog(project, false).show() }
+        val onAddAction = AnActionButtonRunnable { AddGitlabAccountEntryDialog(project).show() }
         val onRemoveAction = AnActionButtonRunnable {
             val selectedRow = gitlabHostsTbl.selectedRow
             gitlabHostsTableModel.removeEntry(selectedRow)

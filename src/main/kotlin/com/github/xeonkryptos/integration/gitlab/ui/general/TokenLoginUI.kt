@@ -9,10 +9,10 @@ import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBTextField
-import com.intellij.ui.layout.CellBuilder
+import com.intellij.ui.dsl.builder.Cell
+import com.intellij.ui.dsl.builder.bindSelected
+import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.layout.ValidationInfoBuilder
-import com.intellij.ui.layout.applyToComponent
-import com.intellij.ui.layout.panel
 import java.net.URI
 import javax.swing.event.DocumentEvent
 
@@ -22,41 +22,42 @@ import javax.swing.event.DocumentEvent
  */
 class TokenLoginUI(withPanelTitle: Boolean = true) {
 
-    private val gitlabSettings = service<GitlabSettingsService>().state
+    private val gitlabSettings = service<GitlabSettingsService>().getWorkableState()
 
-    val gitlabHostTxtField: JBTextField = JBTextField().apply {
-        document.addDocumentListener(object : DocumentAdapter() {
-            override fun textChanged(e: DocumentEvent) {
-                if (!disableCertificateValidationManuallySet) {
-                    try {
-                        val gitlabDomain = URI(text).host
-                        disableCertificateValidation = gitlabSettings.gitlabHostSettings[gitlabDomain]?.disableSslVerification ?: false
-                        if (checkBoxBuilder?.component?.isSelected != disableCertificateValidation) {
-                            checkBoxBuilder?.component?.isSelected = disableCertificateValidation
-                        }
-                    } catch (ignored: Exception) {}
-                }
-            }
-        })
-    }
-    private val gitlabAccessTokenTxtField: JBTextField = JBTextField()
+    private lateinit var gitlabHostTxtField: JBTextField
+    private lateinit var gitlabAccessTokenTxtField: JBTextField
 
-    private var checkBoxBuilder: CellBuilder<JBCheckBox>? = null
+    private var checkBoxBuilder: Cell<JBCheckBox>? = null
     private var disableCertificateValidationManuallySet: Boolean = false
     var disableCertificateValidation: Boolean = false
 
     val dialogPanel: DialogPanel
 
     init {
-        dialogPanel = panel(title = if (withPanelTitle) GitlabBundle.message("action.gitlab.accounts.addGitlabAccountWithToken.text") else null) {
+        dialogPanel = panel {
             row(GitlabBundle.message("action.gitlab.accounts.addGitlabAccountWithToken.host")) {
-                gitlabHostTxtField().focused().withValidationOnApply { validateHostField() }
+                gitlabHostTxtField = textField().applyToComponent {
+                    document.addDocumentListener(object : DocumentAdapter() {
+                        override fun textChanged(e: DocumentEvent) {
+                            if (!disableCertificateValidationManuallySet) {
+                                try {
+                                    val gitlabDomain = URI(text).host
+                                    disableCertificateValidation = gitlabSettings.gitlabHostSettings[gitlabDomain]?.disableSslVerification ?: false
+                                    if (checkBoxBuilder?.component?.isSelected != disableCertificateValidation) {
+                                        checkBoxBuilder?.component?.isSelected = disableCertificateValidation
+                                    }
+                                } catch (ignored: Exception) {
+                                }
+                            }
+                        }
+                    })
+                }.focused().validationOnApply { validateHostField() }.component
             }
             row(GitlabBundle.message("action.gitlab.accounts.addGitlabAccountWithToken.token")) {
-                gitlabAccessTokenTxtField().withValidationOnApply { validateTokenField() }
+                gitlabAccessTokenTxtField = textField().resizableColumn().validationOnApply { validateTokenField() }.component
             }
             row {
-                checkBoxBuilder = checkBox(GitlabBundle.message("settings.general.table.column.certificates"), this@TokenLoginUI::disableCertificateValidation).applyToComponent {
+                checkBoxBuilder = checkBox(GitlabBundle.message("settings.general.table.column.certificates")).bindSelected(this@TokenLoginUI::disableCertificateValidation).applyToComponent {
                     addActionListener { disableCertificateValidationManuallySet = true }
                 }
             }

@@ -1,60 +1,35 @@
 package com.github.xeonkryptos.integration.gitlab.service.data
 
 import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
-import com.intellij.util.xmlb.annotations.OptionTag
-import com.intellij.util.xmlb.annotations.Transient
 
 /**
  * @author Xeonkryptos
  * @since 11.12.2020
  */
-data class GitlabAccount(@Volatile var userId: Long? = null, @Volatile var username: String = "", @Volatile var useSSH: Boolean = true) {
+data class GitlabAccount(val account: SerializableGitlabAccount) {
 
-    @Volatile
-    @Transient
-    private var gitlabHostSettingsOwner: GitlabHostSettings? = null
+    val userId: Long by account::userId
+    val assignedGitlabHost: String by account::assignedGitlabHost
+    val username: String by account::username
 
-    @Volatile
-    @OptionTag
-    var resolveOnlyOwnProjects: Boolean = false
-
-    constructor(gitlabHostSettings: GitlabHostSettings, username: String) : this(null, username) {
-        this.gitlabHostSettingsOwner = gitlabHostSettings
-    }
+    var resolveOnlyOwnProjects: Boolean by account::resolveOnlyOwnProjects
+    var useSSH: Boolean by account::useSSH
 
     fun updateWith(gitlabAccount: GitlabAccount) {
         resolveOnlyOwnProjects = gitlabAccount.resolveOnlyOwnProjects
+        useSSH = gitlabAccount.useSSH
     }
 
-    fun delete() {
-        gitlabHostSettingsOwner?.removeGitlabAccount(this)
-    }
+    fun getGitlabHost(): String = account.assignedGitlabHost
 
-    fun isModified(gitlabAccount: GitlabAccount): Boolean =
-        this != gitlabAccount || resolveOnlyOwnProjects != gitlabAccount.resolveOnlyOwnProjects || gitlabHostSettingsOwner?.gitlabHost != gitlabAccount.gitlabHostSettingsOwner?.gitlabHost
+    fun getGitlabDomain(): String = GitlabUtil.getGitlabDomain(account.assignedGitlabHost)
 
-    fun getGitlabHost(): String = gitlabHostSettingsOwner!!.gitlabHost
-
-    fun getGitlabDomain(): String = gitlabHostSettingsOwner!!.getGitlabDomain()
-
-    fun getGitlabDomainWithoutPort(): String = GitlabUtil.convertToRepoUri(gitlabHostSettingsOwner!!.gitlabHost).host
+    fun getGitlabDomainWithoutPort(): String = GitlabUtil.convertToRepoUri(account.assignedGitlabHost).host
 
     fun getTargetGitlabHost(): String {
         val gitlabHost = getGitlabHost()
         return if (gitlabHost.endsWith("/")) gitlabHost.substring(0, gitlabHost.length - 1) else gitlabHost
     }
 
-    @Transient
-    internal fun getGitlabHostSettingsOwner() = gitlabHostSettingsOwner
-
-    @Transient
-    internal fun setGitlabHostSettingsOwner(gitlabHostSettingsOwner: GitlabHostSettings) {
-        this.gitlabHostSettingsOwner = gitlabHostSettingsOwner
-    }
-
-    fun deepCopy(): GitlabAccount {
-        val newGitlabAccount = GitlabAccount(userId, username, useSSH)
-        newGitlabAccount.resolveOnlyOwnProjects = resolveOnlyOwnProjects
-        return newGitlabAccount
-    }
+    fun deepCopy(): GitlabAccount = GitlabAccount(account.deepCopy())
 }

@@ -48,7 +48,7 @@ class ProjectLinkerAction : DumbAwareAction(GitlabBundle.message("share.action")
         service<FileDocumentManager>().saveAllDocuments()
 
         val gitlabSettingsService = service<GitlabSettingsService>()
-        val allGitlabAccounts = gitlabSettingsService.state.getAllGitlabAccounts()
+        val allGitlabAccounts = gitlabSettingsService.getWorkableState().getAllGitlabAccounts()
 
         val module: Module? = if (file != null) ModuleUtil.findModuleForFile(file, project) else null
         val projectFileIndex: ProjectFileIndex = project.service()

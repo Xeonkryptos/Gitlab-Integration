@@ -58,7 +58,7 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
     private val gitlabUserApi = service<GitlabUserApi>()
     private val gitlabProjectsApi = service<GitlabProjectsApi>()
 
-    private val gitlabSettings = service<GitlabSettingsService>().state
+    private val gitlabSettings = service<GitlabSettingsService>().getWorkableState()
     private val authenticationManager = service<AuthenticationManager>()
 
     @Volatile
@@ -115,7 +115,7 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
         val menuItems = mutableListOf<AccountMenuItem>()
 
         val settingsService = service<GitlabSettingsService>()
-        val gitlabUsersPerAccount = service<GitlabUserApi>().retrieveGitlabUsersFor(project, settingsService.state.getAllGitlabAccounts())
+        val gitlabUsersPerAccount = service<GitlabUserApi>().retrieveGitlabUsersFor(project, settingsService.getWorkableState().getAllGitlabAccounts())
         for ((index, userEntry) in gitlabUsersPerAccount.entries.withIndex()) {
             val accountTitle = userEntry.value.name
 
@@ -135,7 +135,6 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
                 authenticationManager.deleteAuthenticationFor(userEntry.key)
             }, showSeparatorAbove = signedIn)
             accountActions += AccountMenuItem.Action(GitlabBundle.message("accounts.delete"), {
-                userEntry.key.delete()
                 authenticationManager.deleteAuthenticationFor(userEntry.key)
             }, showSeparatorAbove = true)
 

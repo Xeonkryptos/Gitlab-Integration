@@ -1,102 +1,67 @@
 package com.github.xeonkryptos.integration.gitlab.service.data
 
 import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabAccountStateNotifier
-import com.github.xeonkryptos.integration.gitlab.util.GitlabUtil
+import com.github.xeonkryptos.integration.gitlab.internal.messaging.GitlabHostStateNotifier
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.util.messages.MessageBus
-import com.intellij.util.xmlb.annotations.OptionTag
-import com.intellij.util.xmlb.annotations.XCollection
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * @author Xeonkryptos
  * @since 16.02.2021
  */
-data class GitlabHostSettings(@Volatile var gitlabHost: String = "") {
+data class GitlabHostSettings(internal val hostSettings: SerializableGitlabHostSettings) {
 
     private val messageBus: MessageBus = ApplicationManager.getApplication().messageBus
 
-    @Volatile
-    @XCollection(propertyElementName = "gitlabAccounts")
-    private var mutableGitlabAccounts: MutableSet<GitlabAccount> = ConcurrentHashMap.newKeySet()
-    val gitlabAccounts: Set<GitlabAccount> = mutableGitlabAccounts
+    val gitlabHost: String by hostSettings::gitlabHost
+    val gitlabAccounts: Set<GitlabAccount>
+        get() = hostSettings.mutableGitlabAccounts.map { it.gitlabAccount }.toSet()
 
-    @Volatile
-    @OptionTag
-    var disableSslVerification: Boolean = false
+    var disableSslVerification: Boolean by hostSettings::disableSslVerification
 
-    fun createGitlabAccount(username: String, silent: Boolean = false): GitlabAccount {
-        val gitlabAccount = GitlabAccount(this, username)
-        return if (mutableGitlabAccounts.add(gitlabAccount)) {
+    fun createGitlabAccount(userId: Long, username: String, silent: Boolean = false): GitlabAccount {
+        val serializableGitlabAccount = SerializableGitlabAccount(userId, hostSettings.gitlabHost, username)
+        return if (hostSettings.mutableGitlabAccounts.add(serializableGitlabAccount)) {
             if (!silent) {
                 val publisher = messageBus.syncPublisher(GitlabAccountStateNotifier.ACCOUNT_STATE_TOPIC)
-                publisher.onGitlabAccountCreated(gitlabAccount)
+                publisher.onGitlabAccountCreated(serializableGitlabAccount.gitlabAccount)
             }
 
-            gitlabAccount
+            serializableGitlabAccount.gitlabAccount
         } else {
-            mutableGitlabAccounts.find { it.username == username }!!
-        }
-    }
-
-    internal fun addGitlabAccount(gitlabAccount: GitlabAccount) {
-        if (mutableGitlabAccounts.add(gitlabAccount)) {
-            gitlabAccount.setGitlabHostSettingsOwner(this)
+            hostSettings.mutableGitlabAccounts.find { it.username == username }!!.gitlabAccount
         }
     }
 
     fun removeGitlabAccount(gitlabAccount: GitlabAccount, silent: Boolean = false) {
-        mutableGitlabAccounts.remove(gitlabAccount)
+        hostSettings.mutableGitlabAccounts.remove(gitlabAccount.account)
 
         if (!silent) {
             val publisher = messageBus.syncPublisher(GitlabAccountStateNotifier.ACCOUNT_STATE_TOPIC)
             publisher.onGitlabAccountDeleted(gitlabAccount)
         }
+
+        if (hostSettings.mutableGitlabAccounts.isEmpty()) {
+            val publisher = messageBus.syncPublisher(GitlabHostStateNotifier.HOST_STATE_TOPIC)
+            publisher.onGitlabHostsWithoutAnyAccounts(this)
+        }
     }
 
     fun updateWith(gitlabHostSetting: GitlabHostSettings) {
         disableSslVerification = gitlabHostSetting.disableSslVerification
-        mutableGitlabAccounts.retainAll(gitlabHostSetting.mutableGitlabAccounts)
+        hostSettings.mutableGitlabAccounts.retainAll(gitlabHostSetting.hostSettings.mutableGitlabAccounts)
 
-        val gitlabAccountsMap = mutableGitlabAccounts.associateBy { it }
-        gitlabHostSetting.mutableGitlabAccounts.forEach { gitlabAccount ->
-            if (!gitlabAccountsMap.containsKey(gitlabAccount)) {
-                mutableGitlabAccounts.add(gitlabAccount)
+        val gitlabAccountsMap = hostSettings.mutableGitlabAccounts.associateBy { it }
+        gitlabHostSetting.hostSettings.mutableGitlabAccounts.forEach {
+            if (!gitlabAccountsMap.containsKey(it)) {
+                hostSettings.mutableGitlabAccounts.add(it)
             } else {
-                gitlabAccountsMap[gitlabAccount]!!.updateWith(gitlabAccount)
+                gitlabAccountsMap[it]!!.gitlabAccount.updateWith(it.gitlabAccount)
             }
         }
     }
 
-    internal fun onLoadingFinished() {
-        gitlabAccounts.forEach { it.setGitlabHostSettingsOwner(this) }
-    }
+    fun isModified(gitlabHostSetting: GitlabHostSettings) = hostSettings.isModified(gitlabHostSetting.hostSettings)
 
-    fun isModified(gitlabHostSetting: GitlabHostSettings): Boolean {
-        if (this != gitlabHostSetting || disableSslVerification != gitlabHostSetting.disableSslVerification) return true
-        val accounts: List<GitlabAccount> = ArrayList(mutableGitlabAccounts)
-        val otherAccounts: List<GitlabAccount> = ArrayList(gitlabHostSetting.mutableGitlabAccounts)
-        if (accounts.size != otherAccounts.size) {
-            return true
-        }
-        return accounts.withIndex().any {
-            val otherAccount = otherAccounts[it.index]
-            return@any it.value.isModified(otherAccount)
-        }
-    }
-
-    fun getGitlabDomain(): String = GitlabUtil.getGitlabDomain(gitlabHost)
-
-    fun deepCopy(): GitlabHostSettings {
-        val newGitlabAccounts: MutableSet<GitlabAccount> = ConcurrentHashMap.newKeySet()
-        val newGitlabHostSettings = GitlabHostSettings(gitlabHost)
-        mutableGitlabAccounts.forEach { currentGitlabAccount ->
-            val newGitlabAccount = currentGitlabAccount.deepCopy()
-            newGitlabAccount.setGitlabHostSettingsOwner(newGitlabHostSettings)
-            newGitlabAccounts.add(newGitlabAccount)
-        }
-        newGitlabHostSettings.disableSslVerification = disableSslVerification
-        newGitlabHostSettings.mutableGitlabAccounts.addAll(newGitlabAccounts)
-        return newGitlabHostSettings
-    }
+    fun deepCopy() = GitlabHostSettings(hostSettings.deepCopy())
 }

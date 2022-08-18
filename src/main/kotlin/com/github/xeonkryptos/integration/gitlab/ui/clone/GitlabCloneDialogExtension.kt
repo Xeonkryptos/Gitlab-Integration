@@ -14,6 +14,7 @@ import javax.swing.Icon
 class GitlabCloneDialogExtension : VcsCloneDialogExtension {
 
     @Suppress("OverridingDeprecatedMember")
+    @Deprecated("Implement createMainComponent(Project, ModalityState)")
     override fun createMainComponent(project: Project): VcsCloneDialogExtensionComponent {
         throw AssertionError("Shouldn't be called") // NON-NLS
     }

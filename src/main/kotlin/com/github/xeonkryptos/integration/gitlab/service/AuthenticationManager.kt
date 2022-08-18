@@ -49,7 +49,7 @@ class AuthenticationManager {
     }
 
     private fun createTokenCredentialAttributes(gitlabAccount: GitlabAccount): CredentialAttributes {
-        val gitlabTokenServiceName = generateServiceName("Gitlab Token", "${gitlabAccount.getGitlabHost()}->${gitlabAccount.username}")
+        val gitlabTokenServiceName = generateServiceName("Gitlab Token", "${gitlabAccount.assignedGitlabHost}->${gitlabAccount.username}")
         return CredentialAttributes(gitlabTokenServiceName)
     }
 }

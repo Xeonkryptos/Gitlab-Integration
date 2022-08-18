@@ -27,10 +27,10 @@ class EmbeddedGitlabLoginPanel(project: Project) : JPanel(), Disposable {
     private val errorText: ErrorText = ErrorText()
     private val loginButton: JButton = JButton(GitlabBundle.message("accounts.log.in")).apply {
         addActionListener {
-            val validationInfo: List<ValidationInfo> = tokenLoginUI.dialogPanel.validateCallbacks.mapNotNull { it() }
+            val validationInfo: List<ValidationInfo> = tokenLoginUI.dialogPanel.validationsOnApply.values.flatten().mapNotNull { it.validate() }
             if (validationInfo.isEmpty()) {
                 val gitlabLoginData: GitlabLoginData = tokenLoginUI.getGitlabLoginData()
-                LoginTask(project, gitlabLoginData, addNewAccountDirectly = true) { result ->
+                LoginTask(project, gitlabLoginData) { result ->
                     SwingUtilities.invokeLater {
                         if (result == null) {
                             val event = GitlabLoginEvent(this@EmbeddedGitlabLoginPanel)

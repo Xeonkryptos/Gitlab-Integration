@@ -99,11 +99,10 @@ class GitlabHostsTableModel(private val originalSettings: GitlabSettings) : Abst
     }
 
     private fun registerNewGitlabAccount(createdGitlabAccount: GitlabAccount) {
-        val gitlabHost: String = createdGitlabAccount.getGitlabHost()
+        val gitlabHost: String = createdGitlabAccount.assignedGitlabHost
         val containedHostSettingsAlready = currentSettings.containsGitlabHostSettings(gitlabHost)
         val currentGitlabHostSettings = currentSettings.getOrCreateGitlabHostSettings(gitlabHost).apply {
-            createdGitlabAccount.getGitlabHostSettingsOwner()?.let { updateWith(it) }
-            addGitlabAccount(createdGitlabAccount)
+            createGitlabAccount(createdGitlabAccount.userId, createdGitlabAccount.username, silent = true).updateWith(createdGitlabAccount)
         }
         if (!containedHostSettingsAlready) {
             val originalGitlabHostSetting = originalSettings.gitlabHostSettings[gitlabHost]
@@ -113,7 +112,7 @@ class GitlabHostsTableModel(private val originalSettings: GitlabSettings) : Abst
     }
 
     private fun removeGitlabAccount(gitlabAccount: GitlabAccount) {
-        val gitlabHost: String = gitlabAccount.getGitlabHost()
+        val gitlabHost: String = gitlabAccount.assignedGitlabHost
         val currentGitlabHostSettings = currentSettings.gitlabHostSettings[gitlabHost]
         if (currentGitlabHostSettings != null) {
             currentGitlabHostSettings.removeGitlabAccount(gitlabAccount, true)
@@ -130,13 +129,8 @@ class GitlabHostsTableModel(private val originalSettings: GitlabSettings) : Abst
         var lastDeletedRowIndex: Int = selectedRow
         if (removedEntry is GitlabHostSettings) {
             val size = flattenedSettings.size + 1
-
-            while (selectedRow < flattenedSettings.size && flattenedSettings[selectedRow] is GitlabAccount) (flattenedSettings.removeAt(selectedRow) as GitlabAccount).delete()
             currentSettings.removeGitlabHostSettings(removedEntry.gitlabHost)
-
             lastDeletedRowIndex = size - flattenedSettings.size
-        } else if (removedEntry is GitlabAccount) {
-            removedEntry.delete()
         }
         fireTableRowsDeleted(selectedRow, lastDeletedRowIndex)
     }
