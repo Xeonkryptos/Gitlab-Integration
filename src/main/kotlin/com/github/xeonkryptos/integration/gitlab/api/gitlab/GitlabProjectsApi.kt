@@ -44,7 +44,7 @@ class GitlabProjectsApi : BaseGitlabApi() {
                     .queryParam("simple", true)
                     .queryParam("sort", "asc") // Default sort is desc
 
-                if (searchText != null && searchText.isNotBlank()) {
+                if (!searchText.isNullOrBlank()) {
                     baseUriBuilder = baseUriBuilder.queryParam("search", searchText)
                 }
                 val baseUri = baseUriBuilder.build()

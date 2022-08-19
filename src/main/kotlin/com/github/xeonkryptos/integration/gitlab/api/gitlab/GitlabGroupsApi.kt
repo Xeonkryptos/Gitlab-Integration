@@ -26,7 +26,7 @@ class GitlabGroupsApi : BaseGitlabApi() {
     @RequiresBackgroundThread
     fun loadAvailableGroups(searchText: String? = null): MutableMap<GitlabAccount, PagerProxy<List<GitlabGroup>>> {
         val accountGroups: MutableMap<GitlabAccount, PagerProxy<List<GitlabGroup>>> = mutableMapOf()
-        gitlabSettingsService.state.getAllGitlabAccounts().filter { authenticationManager.hasAuthenticationTokenFor(it) }.forEach { gitlabAccount ->
+        gitlabSettingsService.getWorkableState().getAllGitlabAccounts().filter { authenticationManager.hasAuthenticationTokenFor(it) }.forEach { gitlabAccount ->
             loadAvailableGroupsFor(gitlabAccount, searchText)?.let { accountGroups[gitlabAccount] = it }
         }
         return accountGroups
@@ -38,7 +38,7 @@ class GitlabGroupsApi : BaseGitlabApi() {
             var baseUriBuilder: UriBuilder = UriBuilder.fromUri(gitlabAccount.getTargetGitlabHost()).path(GROUP_API_PATH).queryParam("owned", gitlabAccount.resolveOnlyOwnProjects)
                 // Starting with the developer role, projects can be created. With a role lower than developer, the permission to create projects is missing
                 .queryParam("min_access_level", AccessLevels.DEVELOPER.accessLevelId).queryParam("order_by", "full_name").queryParam("order_by", "id").queryParam("sort", "asc") // Default sort is desc
-            if (searchText != null && searchText.isNotBlank()) {
+            if (!searchText.isNullOrBlank()) {
                 baseUriBuilder = baseUriBuilder.queryParam("search", searchText)
             }
             val baseUri = baseUriBuilder.build()
