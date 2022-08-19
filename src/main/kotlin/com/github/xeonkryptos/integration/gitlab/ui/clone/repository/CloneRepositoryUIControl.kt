@@ -73,6 +73,7 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
             this@CloneRepositoryUIControl.ui.gitlabProjectItemsList.setPaintBusy(visible)
         }
     }
+    private var globalSearchProgressIndicator: ProgressIndicator? = null
 
     private val popupMenuMouseAdapter = object : MouseAdapter() {
         override fun mouseClicked(e: MouseEvent?) = showPopupMenu()
@@ -179,27 +180,37 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
             override fun run(indicator: ProgressIndicator) {
                 val gitlabAccounts = loadAccounts()
                 val localGitlabProjectsMap = gitlabProjectsApi.retrieveGitlabProjectsFor(project, gitlabAccounts)
-                gitlabProjectsMap = localGitlabProjectsMap
-                updatePagingPointers(localGitlabProjectsMap.values)
 
-                ui.repositoryModel.availableAccounts = gitlabAccounts
-                SwingUtilities.invokeLater { updateAccountProjects() }
+                SwingUtilities.invokeLater {
+                    gitlabProjectsMap = localGitlabProjectsMap
+                    updatePagingPointers(localGitlabProjectsMap.values)
+                    ui.repositoryModel.availableAccounts = gitlabAccounts
+                    updateAccountProjects()
+                }
             }
         })
     }
 
     private fun doGlobalSearch(globalSearchText: String?) {
-        filtered = globalSearchText != null && globalSearchText.isNotBlank()
-        progressIndicator.run(object : Task.Backgroundable(project, "Filtered repositories download", true, ALWAYS_BACKGROUND) {
+        filtered = !globalSearchText.isNullOrBlank()
+
+        globalSearchProgressIndicator?.cancel()
+        globalSearchProgressIndicator = progressIndicator.run(object : Task.Backgroundable(project, "Filtered repositories download", true, ALWAYS_BACKGROUND) {
 
             override fun run(indicator: ProgressIndicator) {
+                indicator.checkCanceled()
                 val gitlabAccounts: Collection<GitlabAccount> = gitlabProjectsMap?.keys ?: loadAccounts()
-                val localGitlabProjectsMap = gitlabProjectsApi.retrieveGitlabProjectsFor(project, gitlabAccounts, globalSearchText)
-                gitlabProjectsMap = localGitlabProjectsMap
-                updatePagingPointers(localGitlabProjectsMap.values)
 
-                ui.repositoryModel.availableAccounts = gitlabAccounts
-                SwingUtilities.invokeLater { updateAccountProjects() }
+                indicator.checkCanceled()
+                val localGitlabProjectsMap = gitlabProjectsApi.retrieveGitlabProjectsFor(project, gitlabAccounts, globalSearchText)
+
+                indicator.checkCanceled()
+                SwingUtilities.invokeLater {
+                    gitlabProjectsMap = localGitlabProjectsMap
+                    updatePagingPointers(localGitlabProjectsMap.values)
+                    ui.repositoryModel.availableAccounts = gitlabAccounts
+                    updateAccountProjects()
+                }
             }
         })
     }
@@ -229,8 +240,10 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
                             LOG.warn(e)
                         }
                     }
-                    updatePagingPointers(it.values)
-                    SwingUtilities.invokeLater { updateAccountProjects() }
+                    SwingUtilities.invokeLater {
+                        updatePagingPointers(it.values)
+                        updateAccountProjects()
+                    }
                 }
             }
         })
@@ -248,8 +261,10 @@ class CloneRepositoryUIControl(private val project: Project, val ui: CloneReposi
                             LOG.warn(e)
                         }
                     }
-                    updatePagingPointers(it.values)
-                    SwingUtilities.invokeLater { updateAccountProjects() }
+                    SwingUtilities.invokeLater {
+                        updatePagingPointers(it.values)
+                        updateAccountProjects()
+                    }
                 }
             }
         })

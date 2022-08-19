@@ -12,27 +12,26 @@ import com.github.xeonkryptos.integration.gitlab.ui.general.event.PagingEventLis
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.ReloadDataEvent
 import com.github.xeonkryptos.integration.gitlab.ui.general.event.ReloadDataEventListener
 import com.github.xeonkryptos.integration.gitlab.util.GitlabBundle
-import com.intellij.collaboration.ui.CollaborationToolsUIUtil
+import com.github.xeonkryptos.integration.gitlab.util.WaitUntilInputFinishedThrottler
 import com.intellij.dvcs.repo.ClonePathProvider
 import com.intellij.dvcs.ui.DvcsBundle
 import com.intellij.dvcs.ui.SelectChildTextFieldWithBrowseButton
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.project.Project
-import com.intellij.ui.DocumentAdapter
+import com.intellij.openapi.util.Disposer
 import com.intellij.ui.KeyStrokeAdapter
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.components.JBList
-import com.intellij.ui.layout.ComponentPredicate
-import com.intellij.ui.layout.LCFlags
-import com.intellij.ui.layout.panel
+import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.dsl.gridLayout.HorizontalAlign
+import com.intellij.ui.dsl.gridLayout.VerticalAlign
 import com.intellij.util.ui.JBUI
 import git4idea.remote.GitRememberedInputs
 import java.awt.FlowLayout
 import java.awt.event.KeyEvent
 import javax.swing.JPanel
-import javax.swing.JSeparator
-import javax.swing.event.DocumentEvent
+import javax.swing.SwingUtilities
 import javax.swing.event.EventListenerList
 
 /**
@@ -43,27 +42,34 @@ class CloneRepositoryUI(private val project: Project) : Disposable {
 
     private val eventListeners: EventListenerList = EventListenerList()
 
+    private val globalSearchWaitUntilInputFinishedThrottler: WaitUntilInputFinishedThrottler = WaitUntilInputFinishedThrottler {
+        SwingUtilities.invokeLater {
+            val globalSearchTextEvent = GlobalSearchTextEvent(this, searchField.text)
+            if (searchField.text.isBlank()) {
+                fireGlobalSearchTextDeleted(globalSearchTextEvent)
+            } else {
+                fireGlobalSearchTextChanged(globalSearchTextEvent)
+            }
+        }
+    }
+
     internal val repositoryModel: CloneRepositoryUIModel = CloneRepositoryUIModel()
     internal val usersPanel: JPanel = JPanel(FlowLayout(FlowLayout.LEADING, JBUI.scale(1), 0))
-    internal val searchField: SearchTextField = SearchTextField(false).apply {
+    internal val gitlabProjectItemsList: JBList<GitlabProjectListItem> = JBList(repositoryModel).apply {
+        cellRenderer = GitlabProjectListCellRenderer { repositoryModel.availableAccounts }
+        selectionModel.addListSelectionListener {
+            val selectedProject = selectedValue?.gitlabProject
+            val clonePathEvent = ClonePathEvent(this, selectedProject)
+            fireClonePathChangedEvent(clonePathEvent)
+        }
+    }
+    private val searchField: SearchTextField = SearchTextField(false).apply {
         addKeyboardListener(object : KeyStrokeAdapter() {
             override fun keyTyped(event: KeyEvent?) {
-                if (event?.isControlDown == true && event.keyChar == KeyEvent.VK_ENTER.toChar()) {
-                    val globalSearchTextEvent = GlobalSearchTextEvent(this, text)
-                    fireGlobalSearchTextChanged(globalSearchTextEvent)
-                }
+                globalSearchWaitUntilInputFinishedThrottler.onNewInputReceived()
             }
         })
     }
-    internal val gitlabProjectItemsList: JBList<GitlabProjectListItem> =
-        JBList(repositoryModel).apply {
-            cellRenderer = GitlabProjectListCellRenderer { repositoryModel.availableAccounts }
-            selectionModel.addListSelectionListener {
-                val selectedProject = selectedValue?.gitlabProject
-                val clonePathEvent = ClonePathEvent(this, selectedProject)
-                fireClonePathChangedEvent(clonePathEvent)
-            }
-        }
     private val repositoryListPanel: JPanel by lazy {
         CustomListToolbarDecorator(gitlabProjectItemsList).initPosition()
             .disableUpAction()
@@ -83,43 +89,21 @@ class CloneRepositoryUI(private val project: Project) : Disposable {
     }
 
     val repositoryPanel: JPanel
+
     private var controller: CloneRepositoryUIControl = CloneRepositoryUIControl(project, this)
 
     init {
-        CollaborationToolsUIUtil.attachSearch(gitlabProjectItemsList, searchField) { it.gitlabProject.viewableProjectPath }
-        repositoryPanel = panel(LCFlags.fill) {
+        repositoryPanel = panel {
             row {
-                cell(isFullWidth = true) {
-                    searchField(growX, pushX)
-                    button(GitlabBundle.message("button.globalSearch")) {
-                        val searchText: String? = searchField.text
-                        if (searchText?.isNotBlank() == true) {
-                            fireGlobalSearchTextChanged(GlobalSearchTextEvent(this, searchText))
-                        }
-                    }.enableIf(object : ComponentPredicate() {
-                        override fun addListener(listener: (Boolean) -> Unit) {
-                            searchField.addDocumentListener(object : DocumentAdapter() {
-                                override fun textChanged(e: DocumentEvent) {
-                                    listener(invoke())
-
-                                    val searchText: String? = searchField.text
-                                    if (searchText?.isNotBlank() != true) {
-                                        fireGlobalSearchTextDeleted(GlobalSearchTextEvent(this, searchText))
-                                    }
-                                }
-                            })
-                        }
-
-                        override fun invoke(): Boolean = searchField.text?.isNotBlank() ?: false
-                    })
-                    JSeparator(JSeparator.VERTICAL)(growY).withLargeLeftGap()
-                    usersPanel().withLargeLeftGap()
-                }
+                cell(searchField).horizontalAlign(HorizontalAlign.FILL).resizableColumn()
+                cell(usersPanel).horizontalAlign(HorizontalAlign.RIGHT)
             }
-            row { repositoryListPanel(grow, push) }
-            row(GitlabBundle.message("clone.dialog.directory.field")) { directoryField(growX, pushX) }
+            row { cell(repositoryListPanel).horizontalAlign(HorizontalAlign.FILL).verticalAlign(VerticalAlign.FILL).resizableColumn() }.resizableRow()
+            row(GitlabBundle.message("clone.dialog.directory.field")) { cell(directoryField).horizontalAlign(HorizontalAlign.FILL).resizableColumn() }
         }
         controller.registerBehaviourListeners()
+
+        Disposer.register(this, globalSearchWaitUntilInputFinishedThrottler)
     }
 
     override fun dispose() {}
@@ -150,11 +134,11 @@ class CloneRepositoryUI(private val project: Project) : Disposable {
     @Suppress("unused")
     fun removePagingEventListener(listener: PagingEventListener) = eventListeners.remove(PagingEventListener::class.java, listener)
 
-    fun fireGlobalSearchTextChanged(event: GlobalSearchTextEvent) =
-        eventListeners.getListeners(GlobalSearchTextEventListener::class.java).forEach { listener -> listener.onGlobalSearchTextChanged(event) }
+    private fun fireGlobalSearchTextChanged(event: GlobalSearchTextEvent) =
+            eventListeners.getListeners(GlobalSearchTextEventListener::class.java).forEach { listener -> listener.onGlobalSearchTextChanged(event) }
 
-    fun fireGlobalSearchTextDeleted(event: GlobalSearchTextEvent) =
-        eventListeners.getListeners(GlobalSearchTextEventListener::class.java).forEach { listener -> listener.onGlobalSearchTextDeleted(event) }
+    private fun fireGlobalSearchTextDeleted(event: GlobalSearchTextEvent) =
+            eventListeners.getListeners(GlobalSearchTextEventListener::class.java).forEach { listener -> listener.onGlobalSearchTextDeleted(event) }
 
     fun addGlobalSearchTextEventListener(listener: GlobalSearchTextEventListener) = eventListeners.add(GlobalSearchTextEventListener::class.java, listener)
 

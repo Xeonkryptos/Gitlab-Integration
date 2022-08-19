@@ -6,11 +6,8 @@ import java.util.*
 
 class CloneRepositoryUIModel : CollectionListModelExt<GitlabProjectListItem>() {
 
-    @Volatile
     var availableAccounts: Collection<GitlabAccount> = Collections.emptyList()
 
-    @Volatile
     var hasPreviousRepositories: Boolean = false
-    @Volatile
     var hasNextRepositories: Boolean = false
 }
