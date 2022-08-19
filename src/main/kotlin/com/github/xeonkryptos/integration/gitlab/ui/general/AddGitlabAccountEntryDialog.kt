@@ -8,7 +8,7 @@ import javax.swing.SwingUtilities
 
 class AddGitlabAccountEntryDialog(private val project: Project) : DialogWrapper(project, true, IdeModalityType.IDE) {
 
-    private val tokenLoginUI: TokenLoginUI = TokenLoginUI(withPanelTitle = false)
+    private val tokenLoginUI: TokenLoginUI = TokenLoginUI()
 
     init {
         init()

@@ -26,7 +26,7 @@ class ErrorText : JBLabel() {
     init {
         border = createErrorTextBorder()
         horizontalAlignment = SwingConstants.LEADING
-        setAllowAutoWrapping(true)
+        isAllowAutoWrapping = true
         isVisible = false
     }
 
@@ -44,7 +44,7 @@ class ErrorText : JBLabel() {
         errors.add(info)
         val sb = StringBuilder("<html>")
         errors.forEach { vi ->
-            val color: Color = if (vi.warning) MessageType.WARNING.titleForeground else DialogWrapper.ERROR_FOREGROUND_COLOR
+            val color: Color = if (vi.warning) MessageType.WARNING.titleForeground else UIUtil.getErrorForeground()
             sb.append("<font color='#").append(ColorUtil.toHex(color)).append("'>").append("<left>").append(vi.message).append("</left></font><br/>")
         }
         sb.append("</html>")

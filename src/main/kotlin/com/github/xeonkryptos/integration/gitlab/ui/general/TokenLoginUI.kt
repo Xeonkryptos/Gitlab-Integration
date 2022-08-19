@@ -20,7 +20,7 @@ import javax.swing.event.DocumentEvent
  * @author Xeonkryptos
  * @since 17.09.2020
  */
-class TokenLoginUI(withPanelTitle: Boolean = true) {
+class TokenLoginUI {
 
     private val gitlabSettings = service<GitlabSettingsService>().getWorkableState()
 
